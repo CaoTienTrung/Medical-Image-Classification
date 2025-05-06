@@ -148,7 +148,7 @@ class ViT(nn.Module):
 
         self.w_refine = nn.Parameter(torch.ones(d_model))
 
-        self.mlp_head = nn.Sequential(
+        self.softmax = nn.Sequential(
             nn.LayerNorm(d_model),
             nn.Linear(d_model, num_classes),
             nn.Softmax(dim=-1),
@@ -180,6 +180,6 @@ class ViT(nn.Module):
 
         refined_output = cls_output * self.w_refine
 
-        output = self.mlp_head(refined_output)
+        output = self.softmax(refined_output)
 
         return output
