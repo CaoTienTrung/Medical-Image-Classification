@@ -126,7 +126,7 @@ class ViT(nn.Module):
         self.encoder = Encoder(encoder_layers=encoder_layers, d_model=d_model)
 
         self.patch_size = patch_size
-        self.num_patches = (256 // patch_size) ** 2
+        self.num_patches = (224 // patch_size) ** 2
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, d_model))
 
@@ -146,17 +146,21 @@ class ViT(nn.Module):
             norm_layer=nn.LayerNorm(d_model),
         )
 
+        self.w_refine = nn.Parameter(torch.ones(d_model))
+
         self.mlp_head = nn.Sequential(
-            nn.LayerNorm(d_model), nn.Linear(d_model, num_classes)
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, num_classes),
+            nn.LogSoftmax(dim=-1),
         )
 
     def forward(self, x):
-        # (B, 256, 256, 3) - > (B, 3, 255, 255)
+        # (B, 224, 224, 3) - > (B, 3, 224, 224)
         x = x.permute(0, 3, 1, 2)
 
         B, C, L, L = x.shape
 
-        # Patch embedding: (B, 3, 256, 256) -> (B, d_model, 16, 16)
+        # Patch embedding: (B, 3, 224, 224) -> (B, d_model, 16, 16)
         x = self.patch_embed(x)
 
         # Flatten -> (B, num_patches, d_model)
@@ -174,6 +178,8 @@ class ViT(nn.Module):
         # CLS Token
         cls_output = x[:, 0]
 
-        output = self.mlp_head(cls_output)  # (B, num_classes)
+        refined_output = cls_output * self.w_refine
+
+        output = self.mlp_head(refined_output)
 
         return output
