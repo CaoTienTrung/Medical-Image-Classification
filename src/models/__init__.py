@@ -1,1 +1,1 @@
-from .models import SVMClassifier, ViT
+from .models import SVMClassifier, MIAFEx

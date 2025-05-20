@@ -181,9 +181,9 @@ class Encoder(nn.Module):
         return self.norm(x)
 
 
-class ViT(nn.Module):
+class MIAFEx(nn.Module):
     def __init__(self, d_model=768, encoder_layers=3, patch_size=16, num_classes=4):
-        super(ViT, self).__init__()
+        super(MIAFEx, self).__init__()
 
         self.d_model = d_model
 
@@ -217,6 +217,11 @@ class ViT(nn.Module):
             nn.Softmax(dim=-1),
         )
 
+        self.classifier = nn.Sequential(
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, num_classes),
+        )
+
     def forward(self, x):
         # (B, 224, 224, 3) - > (B, 3, 224, 224)
         x = x.permute(0, 3, 1, 2)
@@ -243,6 +248,8 @@ class ViT(nn.Module):
 
         refined_output = cls_output * self.w_refine
 
-        output = self.softmax(refined_output)
+        output = self.classifier (refined_output)
 
         return output
+
+
