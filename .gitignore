@@ -174,5 +174,5 @@ cython_debug/
 .pypirc
 
 
-src/save_path
-Dataset
+src/save_path/
+Dataset/
