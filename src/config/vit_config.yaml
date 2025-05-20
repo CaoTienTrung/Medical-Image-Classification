@@ -1,0 +1,17 @@
+data:
+  img_size: [224, 224]
+  batch_size: 4 # 8
+  path: "/home/anhkhoa/Medical-Image-Classification/Dataset/Data"
+
+adam:
+  lr: 0.00001 # 1e-4
+
+model:
+  d_model: 768
+  encoder_layers: 6
+  patch_size: 16
+  num_classes: 4
+  epochs: 10
+  save_path: "/home/anhkhoa/Medical-Image-Classification/src/save_path/vit"
+
+

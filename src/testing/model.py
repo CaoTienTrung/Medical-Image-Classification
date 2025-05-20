@@ -157,7 +157,7 @@ class ViT(nn.Module):
     def forward(self, x):
         # (B, 224, 224, 3) - > (B, 3, 224, 224)
         x = x.permute(0, 3, 1, 2)
-
+        
         B, C, L, L = x.shape
 
         # Patch embedding: (B, 3, 224, 224) -> (B, d_model, 16, 16)
