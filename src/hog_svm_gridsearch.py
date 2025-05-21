@@ -15,7 +15,7 @@ from src.custom_dataset import CustomImageDataset
 
 if __name__ == "__main__":
     print("Loading datasets...")
-    data_directory = "../Dataset/Data"
+    data_directory = "Dataset/Data"
     train_data = CustomImageDataset(
         directory=os.path.join(data_directory, "train"),
         label_mode="int",
