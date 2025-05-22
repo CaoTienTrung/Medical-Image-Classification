@@ -1,0 +1,21 @@
+model:
+  name: KNNClassifier
+  params:
+    n_neighbors: [3, 5, 7, 9]
+    weights: ["uniform", "distance"]
+    metric: ["euclidean", "manhattan", "minkowski"]
+
+feature_extractor:
+  name: HOGFeatureExtractor
+  params:
+    orientations: [8, 9, 10]
+    pixels_per_cell: [[8, 8], [16, 16]]
+    cells_per_block: [[2, 2], [3, 3]]
+
+dataset:
+  data_dir: "Dataset/Data"
+  image_size: [224, 224]
+  color_mode: "grayscale"
+
+output:
+  dir: "results"
