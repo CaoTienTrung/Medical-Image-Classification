@@ -1,11 +1,9 @@
-# Model configuration
 model:
   name: KNNClassifier
   params:
     n_neighbors: [3, 5, 7, 9]
     weights: ["uniform", "distance"]
 
-# Feature Extractor configuration
 feature_extractor:
   name: HOGFeatureExtractor
   params:
@@ -13,12 +11,10 @@ feature_extractor:
     pixels_per_cell: [[8, 8], [16, 16]]
     cells_per_block: [[2, 2], [3, 3]]
 
-# Dataset configuration
 dataset:
   data_dir: "Dataset/Data"
   image_size: [224, 224]
   color_mode: "grayscale"
 
-# Output configuration
 output:
   dir: "results"

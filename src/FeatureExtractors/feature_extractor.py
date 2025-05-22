@@ -20,6 +20,17 @@ class HOGFeatureExtractor:
         }
 
     def extract(self, img):
+        # Convert to grayscale if image is color
+        if len(img.shape) == 3:
+            if img.shape[2] == 3:  # RGB image
+                img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            elif img.shape[2] == 1:  # Single channel image
+                img = img.squeeze()
+
+        # Ensure image is 2D
+        if len(img.shape) != 2:
+            raise ValueError(f"Expected 2D image, got shape {img.shape}")
+
         return hog(
             img,
             orientations=self.params["orientations"],
