@@ -2,8 +2,6 @@ model:
   name: KNNClassifier
   params:
     n_neighbors: [3, 5, 7, 9]
-    weights: ["uniform", "distance"]
-    metric: ["euclidean", "manhattan", "minkowski"]
 
 feature_extractor:
   name: HOGFeatureExtractor

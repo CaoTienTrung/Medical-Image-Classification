@@ -70,6 +70,7 @@ class KNNClassifier:
         self.n_neighbors = n_neighbors
         self.weights = weights
         self.feature_extractor = feature_extractor
+        # metric is defaulted to euclidean
         self.model = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights)
 
     def train(self, train_data):

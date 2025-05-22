@@ -70,7 +70,6 @@ def main():
     args = parse_args()
     config = load_config(args.config)
 
-    # Import model and feature extractor classes dynamically
     model_module = __import__("src.models.models", fromlist=[config["model"]["name"]])
     fe_module = __import__(
         "src.FeatureExtractors.feature_extractor",
