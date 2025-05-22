@@ -6,6 +6,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 import xgboost as xgb
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.neighbors import KNeighborsClassifier
+from tqdm import tqdm
 
 from FeatureExtractors.feature_extractor import *
 
@@ -60,4 +62,40 @@ class SVMClassifier:
             "recall": recall_score(y, y_pred, average="macro"),
             "f1": f1_score(y, y_pred, average="macro"),
         }
+        return y_pred, metrics
+
+
+class KNNClassifier:
+    def __init__(self, n_neighbors=5, weights="uniform", feature_extractor=None):
+        self.n_neighbors = n_neighbors
+        self.weights = weights
+        self.feature_extractor = feature_extractor
+        self.model = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights)
+
+    def train(self, train_data):
+        X_train, y_train = [], []
+        for img, label in tqdm(train_data, desc="Extracting features for training"):
+            features = self.feature_extractor.extract(img.numpy().transpose(1, 2, 0))
+            X_train.append(features)
+            y_train.append(label)
+
+        X_train = np.array(X_train)
+        y_train = np.array(y_train)
+
+        self.model.fit(X_train, y_train)
+
+    def predict(self, test_data):
+        X_test, y_true = [], []
+        for img, label in tqdm(test_data, desc="Extracting features for testing"):
+            features = self.feature_extractor.extract(img.numpy().transpose(1, 2, 0))
+            X_test.append(features)
+            y_true.append(label)
+
+        X_test = np.array(X_test)
+        y_true = np.array(y_true)
+
+        y_pred = self.model.predict(X_test)
+
+        metrics = {"accuracy": accuracy_score(y_true, y_pred)}
+
         return y_pred, metrics
