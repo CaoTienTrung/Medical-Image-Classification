@@ -11,6 +11,10 @@ from src.FeatureExtractors.feature_extractor import HOGFeatureExtractor
 from src.models.models import KNNClassifier
 from src.custom_dataset import CustomImageDataset
 
+import warnings
+
+warnings.filterwarnings("ignore")
+
 
 if __name__ == "__main__":
     print("Loading datasets...")
