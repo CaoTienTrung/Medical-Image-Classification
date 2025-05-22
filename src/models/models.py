@@ -74,7 +74,7 @@ class KNNClassifier:
 
     def train(self, train_data):
         X_train, y_train = [], []
-        for img, label in tqdm(train_data, desc="Extracting features for training"):
+        for img, label in train_data:
             features = self.feature_extractor.extract(img.numpy().transpose(1, 2, 0))
             X_train.append(features)
             y_train.append(label)
@@ -86,7 +86,7 @@ class KNNClassifier:
 
     def predict(self, test_data):
         X_test, y_true = [], []
-        for img, label in tqdm(test_data, desc="Extracting features for testing"):
+        for img, label in test_data:
             features = self.feature_extractor.extract(img.numpy().transpose(1, 2, 0))
             X_test.append(features)
             y_true.append(label)
