@@ -1,6 +1,9 @@
 import numpy as np
 import sys
 import os
+
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
 from sklearn.metrics import accuracy_score
 import joblib
 from tqdm import tqdm
