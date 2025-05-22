@@ -36,6 +36,10 @@ class LBPFeatureExtractor:
         }
 
     def extract(self, img):
+        if isinstance(img, torch.Tensor):
+            img = img.numpy()
+        img = np.squeeze(img) # Input 2D
+        
         lbp = local_binary_pattern(img, 
                                    P=self.params["P"],
                                    R=self.params["R"],
