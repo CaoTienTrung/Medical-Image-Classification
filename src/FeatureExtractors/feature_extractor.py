@@ -35,8 +35,10 @@ class LBPFeatureExtractor:
         self.params = {"P": 8, "R": 1, "method": "uniform"}
 
     def extract(self, img):
-        if len(img.shape) == 3:
-            img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        # Convert tensor to numpy and squeeze to remove single-dimensional entries
+        if isinstance(img, torch.Tensor):
+            img = img.numpy()
+        img = np.squeeze(img)
 
         lbp = local_binary_pattern(
             img, P=self.params["P"], R=self.params["R"], method=self.params["method"]
