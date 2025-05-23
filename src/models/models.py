@@ -83,8 +83,6 @@ class RFClassifier:
         self,
         n_estimators=100,
         max_depth=None,
-        min_samples_split=2,
-        min_samples_leaf=1,
         criterion="gini",
         random_state=42,
         feature_extractor=HOGFeatureExtractor(),
@@ -93,8 +91,6 @@ class RFClassifier:
         self.model = RandomForestClassifier(
             n_estimators=n_estimators,
             max_depth=max_depth,
-            min_samples_split=min_samples_split,
-            min_samples_leaf=min_samples_leaf,
             criterion=criterion,
             random_state=random_state,
         )
