@@ -1,0 +1,22 @@
+model:
+  name: RandomForestClassifier
+  params:
+    n_estimators: [100, 200, 300]
+    max_depth: [10, 20, 30, None]
+    min_samples_split: [2, 5, 10]
+    min_samples_leaf: [1, 2, 4]
+
+feature_extractor:
+  name: LBPFeatureExtractor
+  params:
+    radius: [1, 2, 3]
+    n_points: [8, 16, 24]
+    method: ["uniform", "default"]
+
+dataset:
+  data_dir: "Dataset/Data"
+  image_size: [224, 224]
+  color_mode: "grayscale"
+
+output:
+  dir: "results"
