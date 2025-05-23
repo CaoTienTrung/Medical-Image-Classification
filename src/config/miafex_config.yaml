@@ -13,5 +13,7 @@ model:
   num_classes: 4
   epochs: 10
   save_path: "/home/anhkhoa/Medical-Image-Classification/src/save_path/miafex"
+  
 
-
+svm:
+  model_path: "/home/anhkhoa/Medical-Image-Classification/src/save_path/miafex_svm"

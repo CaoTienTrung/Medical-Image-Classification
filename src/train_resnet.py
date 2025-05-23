@@ -1,7 +1,7 @@
 import argparse
 import yaml
-from models import MIAFEx
-from utils import chestCTforMIAFEx
+from models import ResNet18
+from utils import chestCTforViT
 from torch.utils.data import DataLoader
 import torch
 import torch.nn as nn
@@ -31,9 +31,9 @@ if __name__ == "__main__":
     args = parse_args()
     config = load_yaml(args.config)
     
-    train_set = chestCTforMIAFEx(config["data"]["path"], "train", config["data"]["img_size"])
-    dev_set = chestCTforMIAFEx(config["data"]["path"], "valid", config["data"]["img_size"])
-    test_set = chestCTforMIAFEx(config["data"]["path"], "test", config["data"]["img_size"])
+    train_set = chestCTforViT(config["data"]["path"], "train", config["data"]["img_size"])
+    dev_set = chestCTforViT(config["data"]["path"], "valid", config["data"]["img_size"])
+    test_set = chestCTforViT(config["data"]["path"], "test", config["data"]["img_size"])
     
     train_loader = DataLoader(train_set, batch_size=config["data"]["batch_size"], shuffle=True)
     dev_loader = DataLoader(dev_set, batch_size=config["data"]["batch_size"], shuffle=False)
@@ -41,18 +41,14 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    viT = MIAFEx(
-        d_model = config["model"]["d_model"],
-        encoder_layers= config["model"]["encoder_layers"],
-        patch_size= config["model"]["patch_size"],
-        num_classes= config["model"]["num_classes"],
+    viT = ResNet18(
+        n_classes= config["model"]["num_classes"],
     ).to(device)
 
     criterion = nn.CrossEntropyLoss()
     num_epochs = config["model"]["epochs"]
 
     optimizer = optim.NAdam(viT.parameters(), lr=config["adam"]["lr"])
-
 
 
     viT.train()
@@ -93,9 +89,8 @@ if __name__ == "__main__":
             correct_pred += (pred == labels).sum().item()
             test_bar.set_postfix({'acc': f'{100*correct_pred/total_pred:.2f}%'})
 
-
     print(f'\n Test Accuracy: {100 * correct_pred / total_pred:.2f}%')
-    
+
 
     # save the model
     save_model(viT, optimizer, config["model"]["save_path"])

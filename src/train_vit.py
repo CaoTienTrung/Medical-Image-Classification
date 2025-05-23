@@ -57,7 +57,7 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss()
     num_epochs = config["model"]["epochs"]
 
-    optimizer = optim.Adam(viT.parameters(), lr=config["adam"]["lr"])
+    optimizer = optim.NAdam(viT.parameters(), lr=config["adam"]["lr"])
 
 
     viT.train()

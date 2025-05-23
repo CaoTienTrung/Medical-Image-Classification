@@ -6,7 +6,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 import xgboost as xgb
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-
+from tqdm import tqdm
 from FeatureExtractors.feature_extractor import *
 
 class SVMClassifier:
@@ -222,6 +222,8 @@ class MIAFEx(nn.Module):
             nn.Linear(d_model, num_classes),
         )
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     def forward(self, x):
         # (B, 224, 224, 3) - > (B, 3, 224, 224)
         x = x.permute(0, 3, 1, 2)
@@ -248,8 +250,151 @@ class MIAFEx(nn.Module):
 
         refined_output = cls_output * self.w_refine
 
-        output = self.classifier (refined_output)
+        output = self.classifier(refined_output)
 
         return output
+
+    def extract_features(self, x):
+        # (B, 224, 224, 3) - > (B, 3, 224, 224)
+        x = x.permute(0, 3, 1, 2)
+        
+        B, C, L, L = x.shape
+
+        # Patch embedding: (B, 3, 224, 224) -> (B, d_model, 16, 16)
+        x = self.patch_embed(x)
+
+        # Flatten -> (B, num_patches, d_model)
+        x = x.flatten(2).transpose(1, 2)
+
+        cls_tokens = self.cls_token.expand(B, -1, -1)
+        x = torch.cat((cls_tokens, x), dim=1)
+
+        # PE
+        x = x + self.PE(x)
+        x = self.dropout(x)
+
+        x = self.encoder(x)
+
+        # CLS Token
+        cls_output = x[:, 0]
+
+        refined_output = cls_output * self.w_refine
+        return refined_output
+
+    def features_from_loader(self, loader):
+        features = []
+        labels = []
+        for batch in tqdm(loader, desc = 'Extracting features'):
+            x, y = batch
+            x = x.to(self.device)
+            with torch.no_grad():
+                feature = self.extract_features(x)
+                features.append(feature.cpu().numpy())
+                labels.append(y.cpu().numpy())
+        features = np.concatenate(features, axis=0)
+        labels = np.concatenate(labels, axis=0)
+        return features, labels
+    
+
+class BasicBlock(nn.Module):
+    """The Residual Block"""
+
+    def __init__(self, in_channels: int, out_channels: int, stride: int = 1, downsample: bool = False) -> None:
+        """
+        Create the Residual Block
+
+        Args:
+            in_channels (int): number of input channels
+            out_channels (int): number of output channels
+            stride (int): stride of first 3x3 convolution layer
+            downsample (bool): whether to adjust for spatial dimensions due to downsampling via stride=2
+        """
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+
+        # For downsampling, the skip connection will pass through the 1x1 conv layer with stride of 2 to
+        # match the spatial dimension of the downsampled feature maps and channels for the add operation.
+        #
+        # More specifically, the 'downsample block' is used for layer 2, 3, 4 of ResNet18 where the first conv2d
+        # layer of the BasicBlock uses a stride of 2 instead of 1 to downsample feature maps for a larger
+        # receptive field.
+        # This is why we need to carefully craft our 'downsample block' to make sure spatial dimensions are
+        # not disrupted when we add the skip connection in these residual blocks.
+        self.downsample = None
+        if downsample:
+            self.downsample = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(out_channels),
+            )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        identity = x.clone()
+        x = self.relu(self.bn1(self.conv1(x)))
+        x = self.bn2(self.conv2(x))
+
+        if self.downsample:  # if layer not None
+            identity = self.downsample(identity)
+
+        x += identity
+        o = self.relu(x)
+
+        return o
+
+
+class ResNet18(nn.Module):
+    """The ResNet-18 Model"""
+
+    def __init__(self, n_classes: int = 10) -> None:
+        """
+        Create the ResNet-18 Model
+
+        Args:
+            n_classes (int, optional): The number of output classes we predict for. Defaults to 10.
+        """
+        super().__init__()
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=(3, 3), bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+
+        self.layer1 = nn.Sequential(
+            BasicBlock(64, 64),
+            BasicBlock(64, 64),
+        )
+        self.layer2 = nn.Sequential(
+            BasicBlock(64, 128, stride=2, downsample=True),
+            BasicBlock(128, 128),
+        )
+        self.layer3 = nn.Sequential(
+            BasicBlock(128, 256, stride=2, downsample=True),
+            BasicBlock(256, 256),
+        )
+        self.layer4 = nn.Sequential(
+            BasicBlock(256, 512, stride=2, downsample=True),
+            BasicBlock(512, 512),
+        )
+        self.avgpool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
+
+        # our fully connected layer will be different to accomodate for CIFAR-10
+        self.fc = nn.Linear(in_features=512, out_features=n_classes)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.maxpool(self.relu(self.bn1(self.conv1(x))))
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.avgpool(x)  # [bs, 512, 1, 1]
+
+        x = torch.squeeze(x)  # reshape to [bs, 512]
+        o = self.fc(x)
+
+        return o
+
 
 
