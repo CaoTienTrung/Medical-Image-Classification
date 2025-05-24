@@ -1,0 +1,7 @@
+orientations: 10
+pixels_per_cell: (8, 8)
+cells_per_block: (2, 2)
+n_neighbors: 3
+weights: uniform
+metric: euclidean
+0.466

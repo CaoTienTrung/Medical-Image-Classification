@@ -1,0 +1,7 @@
+P: 8
+R: 1
+method: default
+C: 10
+kernel: rbf
+degree: 2
+0.5174

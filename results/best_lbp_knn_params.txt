@@ -1,0 +1,7 @@
+P: 8
+R: 1
+method: default
+n_neighbors: 7
+weights: uniform
+metric: euclidean
+0.533

@@ -1,0 +1,6 @@
+orientations: 8
+pixels_per_cell: [16, 16]
+cells_per_block: [3, 3]
+n_estimators: 300
+max_depth: 10
+0.5968
