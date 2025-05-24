@@ -3,7 +3,7 @@ model:
   params:
     C: [1, 10]
     kernel: ["rbf", "linear"]
-    gamma: ["scale", "auto"]
+    degree: [1, 2, 3]
 
 feature_extractor:
   name: GLCMFeatureExtractor
