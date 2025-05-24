@@ -1,6 +1,6 @@
 import argparse
 import yaml
-from models import MIAFEx, SVMClassifier
+from models import MIAFEx, SVMClassifier, LRClassifier, RFClassifier, XGBoostClassifier
 from utils import chestCTforMIAFEx
 from torch.utils.data import DataLoader
 import torch
@@ -53,34 +53,59 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss()
     num_epochs = config["model"]["epochs"]
 
-    optimizer = optim.NAdam(viT.parameters(), lr=config["adam"]["lr"])
+    optimizer = optim.Adam(viT.parameters(), lr=config["adam"]["lr"])
 
-    model, optimizer = load_model_state(viT, optimizer, config["model"]["save_path"])
+    vit, optimizer = load_model_state(viT, optimizer, config["model"]["save_path"])
 
 
-    model.eval()
-    features_train, labels_train = model.features_from_loader(train_loader)
-    features_dev, labels_dev = model.features_from_loader(dev_loader)
+    vit.eval()
+    features_train, labels_train = vit.features_from_loader(train_loader)
+    features_dev, labels_dev = vit.features_from_loader(dev_loader)
 
     # Concatenate train + dev
     features_train_dev = np.concatenate([features_train, features_dev], axis=0)
     labels_train_dev = np.concatenate([labels_train, labels_dev], axis=0)
 
+    print("Unique train+dev labels:", np.unique(labels_train_dev))
+
     # Fit SVM on train + dev
-    svm = SVMClassifier(C=1, kernel='rbf', degree=3, model_path=config["svm"]["model_path"])
-    svm.model.fit(features_train_dev, labels_train_dev)
+    svm = SVMClassifier(C=config["svm"]["C"], kernel=config["svm"]["kernel"], degree=config["svm"]["degree"], model_path=config["svm"]["model_path"])
+    lr = LRClassifier(C = config["lr"]["C"],solver = config["lr"]["solver"], max_iter = config["lr"]["max_iter"], random_state=config["lr"]["random_state"], model_path=config["lr"]["model_path"])
+    rf = RFClassifier(n_estimators=config["rf"]["n_estimators"], criterion=config["rf"]["criterion"],random_state=config["rf"]["random_state"], model_path=config["rf"]["model_path"])
+    xgb = XGBoostClassifier(n_estimators=config["xgb"]["n_estimators"], max_depth=config["xgb"]["max_depth"], learning_rate=config["xgb"]["lr"], model_path=config["xgb"]["model_path"], num_class=config["xgb"]["num_classes"])
 
-    # Evaluate on test set
-    features_test, labels_test = model.features_from_loader(test_loader)
-    y_pred = svm.model.predict(features_test)
+    list_of_models = [svm, lr, rf, xgb]
+    results = []
+    for model in list_of_models:
+        model.model.fit(features_train_dev, labels_train_dev)
 
-    # Calculate metrics
-    accuracy = accuracy_score(labels_test, y_pred)
-    precision = precision_score(labels_test, y_pred, average='macro')
-    recall = recall_score(labels_test, y_pred, average='macro')
-    f1 = f1_score(labels_test, y_pred, average='macro')
-    print(f"Accuracy: {accuracy:.4f}")
-    print(f"Precision: {precision:.4f}")
-    print(f"Recall: {recall:.4f}")
-    print(f"F1 Score: {f1:.4f}")
+        # Evaluate on test set
+        features_test, labels_test = vit.features_from_loader(test_loader)
+        y_pred = model.model.predict(features_test)
+
+        # Calculate metrics
+        accuracy = accuracy_score(labels_test, y_pred)
+        precision = precision_score(labels_test, y_pred, average='macro')
+        recall = recall_score(labels_test, y_pred, average='macro')
+        f1 = f1_score(labels_test, y_pred, average='macro')
+        result = {}
+        result[model.__class__.__name__] = {
+            "accuracy": accuracy,
+            "precision": precision,
+            "recall": recall,
+            "f1_score": f1
+        }
+        results.append(result)
+
+        print(f"Accuracy: {accuracy:.4f}")
+        print(f"Precision: {precision:.4f}")
+        print(f"Recall: {recall:.4f}")
+        print(f"F1 Score: {f1:.4f}")
+    
+    # save results
+
+    import json
+
+    with open(config["results"]["save_path"], 'w') as file:
+        json.dump(results, file)
 

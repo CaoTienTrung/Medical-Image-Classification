@@ -10,6 +10,7 @@ from tqdm import tqdm
 import torch.optim as optim
 from utils import save_model, load_model_state
 from vit_pytorch import ViT
+from transformers import ViTImageProcessor, ViTModel
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Pipeline for ViT")
@@ -53,11 +54,13 @@ if __name__ == "__main__":
         dropout = 0.1,
         emb_dropout = 0.1
     ).to(device)
+    
+    # viT = ViTModel.from_pretrained('google/vit-base-patch16-224-in21k').to(device)
 
     criterion = nn.CrossEntropyLoss()
     num_epochs = config["model"]["epochs"]
 
-    optimizer = optim.NAdam(viT.parameters(), lr=config["adam"]["lr"])
+    optimizer = optim.Adam(viT.parameters(), lr=config["adam"]["lr"])
 
 
     viT.train()
@@ -72,8 +75,9 @@ if __name__ == "__main__":
         
             optimizer.zero_grad()
             outputs = viT(inputs)
-            labels = labels.type_as(outputs)
-            loss = criterion(outputs, labels.long())
+            logits = outputs.logits  
+
+            loss = criterion(logits, labels)
             loss.backward()
             optimizer.step()
             

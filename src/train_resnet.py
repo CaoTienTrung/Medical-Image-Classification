@@ -35,7 +35,7 @@ if __name__ == "__main__":
     dev_set = chestCTforViT(config["data"]["path"], "valid", config["data"]["img_size"])
     test_set = chestCTforViT(config["data"]["path"], "test", config["data"]["img_size"])
     
-    train_loader = DataLoader(train_set, batch_size=config["data"]["batch_size"], shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=config["data"]["batch_size"], shuffle=True, drop_last=True)
     dev_loader = DataLoader(dev_set, batch_size=config["data"]["batch_size"], shuffle=False)
     test_loader = DataLoader(test_set, batch_size=config["data"]["batch_size"], shuffle=False)
 
@@ -64,6 +64,7 @@ if __name__ == "__main__":
             optimizer.zero_grad()
             outputs = viT(inputs)
             labels = labels.type_as(outputs)
+
             loss = criterion(outputs, labels.long())
             loss.backward()
             optimizer.step()

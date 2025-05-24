@@ -4,7 +4,7 @@ data:
   path: "/home/anhkhoa/Medical-Image-Classification/Dataset/Data"
 
 adam:
-  lr: 0.00001 # 1e-4
+  lr: 0.0001 # 1e-4
 
 model:
   d_model: 768

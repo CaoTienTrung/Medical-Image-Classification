@@ -32,10 +32,11 @@ def load_model_state(model, optimizer, model_path):
     """
     try:
         checkpoint = torch.load(model_path, map_location=torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
-        model.load_state_dict(checkpoint['model_state_dict'])
+        model.load_state_dict(checkpoint['model_state_dict'], strict=False)
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         print(f"Model state loaded successfully from {model_path}")
     except Exception as e:
         print(f"Error loading model state: {e}")
+        raise e
     
     return model, optimizer

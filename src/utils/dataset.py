@@ -9,7 +9,7 @@ class chestCTforMIAFEx(Dataset):
     def __init__(self, datapath, load_type = "train", img_size = (224, 224)):
         self.datapath = datapath
         self.label_dic = {
-            "adenocarinoma": 0,
+            "adenocarcinoma": 0, 
             "large.cell.carcinoma": 1,
             "squamous.cell.carcinoma": 2,
             "normal": 3,
@@ -84,7 +84,7 @@ class chestCTforViT(Dataset):
     def __init__(self, datapath, load_type = "train", img_size = (224, 224)):
         self.datapath = datapath
         self.label_dic = {
-            "adenocarinoma": 0,
+            "adenocarcinoma": 0,
             "large.cell.carcinoma": 1,
             "squamous.cell.carcinoma": 2,
             "normal": 3,
@@ -139,12 +139,8 @@ class chestCTforViT(Dataset):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
         # Normalize về [0,1]
-        img = img.astype(np.float32) / 255.0
-
-        # Standardize bằng ImageNet mean/std
-        mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-        std  = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-        img = (img - mean) / std  # Broadcasting theo từng channel
+        img = img.astype(np.float32) / 255.0  # Normalize về [0, 1]
+        img = (img - img.mean()) / (img.std() + 1e-8)  # Standardize riêng từng ảnh
 
         img = torch.from_numpy(img).permute(2,0,1)  # Chuyển từ HWC -> CHW
 

@@ -1,1 +1,1 @@
-from .models import SVMClassifier, MIAFEx, ResNet18
+from .models import SVMClassifier, MIAFEx, ResNet18, RFClassifier , XGBoostClassifier, LRClassifier

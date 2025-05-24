@@ -51,7 +51,7 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss()
     num_epochs = config["model"]["epochs"]
 
-    optimizer = optim.NAdam(viT.parameters(), lr=config["adam"]["lr"])
+    optimizer = optim.Adam(viT.parameters(), lr=config["adam"]["lr"])
 
 
 
@@ -93,9 +93,9 @@ if __name__ == "__main__":
             correct_pred += (pred == labels).sum().item()
             test_bar.set_postfix({'acc': f'{100*correct_pred/total_pred:.2f}%'})
 
-
-    print(f'\n Test Accuracy: {100 * correct_pred / total_pred:.2f}%')
     
+    print(f'\n Test Accuracy: {100 * correct_pred / total_pred:.2f}%')
+
 
     # save the model
     save_model(viT, optimizer, config["model"]["save_path"])
