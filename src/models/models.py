@@ -554,5 +554,23 @@ class ResNet18(nn.Module):
         
         return o
 
+class ViTTransferLearning(nn.Module):
+    def __init__(self, num_classes, pretrained=True, freeze_backbone=False):
+        super().__init__()
+        # Load pretrained ViT trên ImageNet-21k
+        self.model = timm.create_model('vit_base_patch16_224_in21k', pretrained=pretrained)
+        
+        # Thay lớp cuối cho phù hợp với số lớp mới
+        in_features = self.model.head.in_features
+        self.model.head = nn.Linear(in_features, num_classes)
+        
+        if freeze_backbone:
+            # Freeze toàn bộ backbone, chỉ train lớp head
+            for param in self.model.parameters():
+                param.requires_grad = False
+            for param in self.model.head.parameters():
+                param.requires_grad = True
 
+    def forward(self, x):
+        return self.model(x)
 
