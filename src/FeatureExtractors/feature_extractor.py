@@ -62,37 +62,28 @@ class LBPFeatureExtractor:
 
 
 class GLCMFeatureExtractor:
-    def __init__(self, params=None):
-        if params is None:
-            params = {}
-        self.params = {
-            "distances": params.get("distances", [1]),
-            "angles": params.get("angles", [0, np.pi / 4, np.pi / 2, 3 * np.pi / 4]),
-            "properties": params.get(
-                "properties",
-                [
-                    "contrast",
-                    "dissimilarity",
-                    "homogeneity",
-                    "energy",
-                    "correlation",
-                    "ASM",
-                ],
-            ),
-        }
+    def __init__(self):
+        self.distances = [1]
+        self.angles = [0, np.pi / 4, np.pi / 2, 3 * np.pi / 4]
+        self.properties = [
+            "contrast",
+            "dissimilarity",
+            "homogeneity",
+            "energy",
+            "correlation",
+            "ASM",
+        ]
 
     def extract(self, img):
         glcm = graycomatrix(
             img,
-            distances=self.params["distances"],
-            angles=self.params["angles"],
+            distances=self.distances,
+            angles=self.angles,
             symmetric=True,
             normed=True,
         )
 
-        return np.concatenate(
-            [graycoprops(glcm, p).flatten() for p in self.params["properties"]]
-        )
+        return np.concatenate([graycoprops(glcm, p).flatten() for p in self.properties])
 
 
 class GaborExtractor:
