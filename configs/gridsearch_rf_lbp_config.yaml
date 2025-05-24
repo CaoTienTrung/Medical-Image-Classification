@@ -10,7 +10,7 @@ feature_extractor:
   name: "LBPFeatureExtractor"
 
 dataset:
-  data_dir: "data/processed"
+  data_dir: "Dataset/Data"
   image_size: [224, 224]
   color_mode: "grayscale"
 
