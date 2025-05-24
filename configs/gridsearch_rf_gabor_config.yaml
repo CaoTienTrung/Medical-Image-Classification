@@ -1,3 +1,11 @@
+dataset:
+  data_dir: "data/processed"
+  image_size: [224, 224]
+  color_mode: "grayscale"
+
+feature_extractor:
+  name: "GaborFeatureExtractor"
+
 model:
   name: "RandomForestClassifier"
   params:
@@ -5,14 +13,6 @@ model:
     max_depth: [10, 20, 30, None]
     min_samples_split: [2, 5, 10]
     min_samples_leaf: [1, 2, 4]
-
-feature_extractor:
-  name: "LBPFeatureExtractor"
-
-dataset:
-  data_dir: "data/processed"
-  image_size: [224, 224]
-  color_mode: "grayscale"
 
 output:
   dir: "results/gridsearch"

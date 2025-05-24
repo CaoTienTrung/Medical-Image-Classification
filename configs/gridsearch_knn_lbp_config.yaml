@@ -1,17 +1,17 @@
+dataset:
+  data_dir: "data/processed"
+  image_size: [224, 224]
+  color_mode: "grayscale"
+
+feature_extractor:
+  name: "LBPFeatureExtractor"
+
 model:
   name: "KNNClassifier"
   params:
     n_neighbors: [3, 5, 7, 9]
     weights: ["uniform", "distance"]
     metric: ["euclidean", "manhattan"]
-
-feature_extractor:
-  name: "GLCMFeatureExtractor"
-
-dataset:
-  data_dir: "data/processed"
-  image_size: [224, 224]
-  color_mode: "grayscale"
 
 output:
   dir: "results/gridsearch"

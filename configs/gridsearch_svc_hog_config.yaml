@@ -1,17 +1,17 @@
+dataset:
+  data_dir: "data/processed"
+  image_size: [224, 224]
+  color_mode: "grayscale"
+
+feature_extractor:
+  name: "HOGFeatureExtractor"
+
 model:
   name: "SVMClassifier"
   params:
     C: [0.1, 1, 10, 100]
     kernel: ["linear", "rbf"]
     gamma: ["scale", "auto", 0.1, 0.01]
-
-feature_extractor:
-  name: "GLCMFeatureExtractor"
-
-dataset:
-  data_dir: "data/processed"
-  image_size: [224, 224]
-  color_mode: "grayscale"
 
 output:
   dir: "results/gridsearch"

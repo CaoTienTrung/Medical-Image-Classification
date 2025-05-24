@@ -81,7 +81,7 @@ def main():
 
     # Get parameter grids from config
     model_params = config["model"]["params"]
-    fe_params = config["feature_extractor"]["params"]
+    fe_params = {}  # Empty dict for feature extractor to use defaults
 
     # Load datasets
     train_data, test_data = load_dataset(
@@ -90,13 +90,11 @@ def main():
         config["dataset"]["color_mode"],
     )
 
-    # Generate all parameter combinations
+    # Generate all parameter combinations (only for model parameters now)
     param_combinations = []
-    for fe_vals in product(*fe_params.values()):
-        fe_dict = dict(zip(fe_params.keys(), fe_vals))
-        for model_vals in product(*model_params.values()):
-            model_dict = dict(zip(model_params.keys(), model_vals))
-            param_combinations.append((fe_dict, model_dict))
+    for model_vals in product(*model_params.values()):
+        model_dict = dict(zip(model_params.keys(), model_vals))
+        param_combinations.append((fe_params, model_dict))
 
     print(f"\nTotal parameter combinations to try: {len(param_combinations)}")
 
@@ -111,9 +109,9 @@ def main():
     for i, (fe_dict, model_dict) in enumerate(
         tqdm(param_combinations, desc="Grid Search Progress")
     ):
-        # Create feature extractor with current parameters
+        # Create feature extractor with default parameters
         feature_extractor = FeatureExtractorClass()
-        feature_extractor.params.update(fe_dict)
+        # No need to update feature extractor params since we're using defaults
 
         # Create model with current parameters
         model = ModelClass(feature_extractor=feature_extractor, **model_dict)
@@ -125,11 +123,11 @@ def main():
         # Update best parameters if current model is better
         if metrics["accuracy"] > best_score:
             best_score = metrics["accuracy"]
-            best_params = {**fe_dict, **model_dict}
+            best_params = {**model_dict}
             best_model = model
 
         print(f"\nCombination {i+1}/{len(param_combinations)}")
-        print(f"Parameters: {fe_dict}, {model_dict}")
+        print(f"Parameters: {model_dict}")
         print(f"Accuracy: {metrics['accuracy']:.4f}")
 
     print("\nBest parameters found:")
