@@ -7,7 +7,7 @@ feature_extractor:
   name: "GaborFeatureExtractor"
 
 model:
-  name: "RandomForestClassifier"
+  name: "RFClassifier"
   params:
     n_estimators: [100, 200, 300]
     max_depth: [10, 20, 30, None]

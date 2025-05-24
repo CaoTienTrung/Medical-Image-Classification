@@ -79,11 +79,9 @@ def main():
     ModelClass = getattr(model_module, config["model"]["name"])
     FeatureExtractorClass = getattr(fe_module, config["feature_extractor"]["name"])
 
-    # Get parameter grids from config
     model_params = config["model"]["params"]
-    fe_params = {}  # Empty dict for feature extractor to use defaults
+    fe_params = {}
 
-    # Load datasets
     train_data, test_data = load_dataset(
         config["dataset"]["data_dir"],
         tuple(config["dataset"]["image_size"]),
@@ -109,18 +107,13 @@ def main():
     for i, (fe_dict, model_dict) in enumerate(
         tqdm(param_combinations, desc="Grid Search Progress")
     ):
-        # Create feature extractor with default parameters
         feature_extractor = FeatureExtractorClass()
-        # No need to update feature extractor params since we're using defaults
 
-        # Create model with current parameters
         model = ModelClass(feature_extractor=feature_extractor, **model_dict)
 
-        # Train and evaluate
         model.train(train_data)
         y_pred, metrics = model.predict(test_data)
 
-        # Update best parameters if current model is better
         if metrics["accuracy"] > best_score:
             best_score = metrics["accuracy"]
             best_params = {**model_dict}
