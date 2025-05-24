@@ -1,0 +1,20 @@
+model:
+  name: KNNClassifier
+  params:
+    n_neighbors: [3, 5, 7]
+    weights: ["uniform", "distance"]
+
+feature_extractor:
+  name: GLCMFeatureExtractor
+  params:
+    distances: [[1]]
+    angles: [[0, np.pi/4, np.pi/2, 3*np.pi/4]]
+    properties: [["contrast", "dissimilarity", "homogeneity", "energy"]]
+
+dataset:
+  data_dir: "Dataset/Data"
+  image_size: [224, 224]
+  color_mode: "grayscale"
+
+output:
+  dir: "results"

@@ -1,0 +1,20 @@
+model:
+  name: RFClassifier
+  params:
+    n_estimators: [100, 200]
+    max_depth: [10, null]
+
+feature_extractor:
+  name: GLCMFeatureExtractor
+  params:
+    distances: [[1]]
+    angles: [[0, np.pi/4, np.pi/2, 3*np.pi/4]]
+    properties: [["contrast", "dissimilarity", "homogeneity", "energy"]]
+
+dataset:
+  data_dir: "Dataset/Data"
+  image_size: [224, 224]
+  color_mode: "grayscale"
+
+output:
+  dir: "results"
