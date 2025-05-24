@@ -9,7 +9,7 @@ feature_extractor:
   name: GLCMFeatureExtractor
   params:
     distances: [[1]]
-    angles: [[0, np.pi/4, np.pi/2, 3*np.pi/4]]
+    angles: [[0, 0.785, 1.571, 2.356]]
     properties: [["contrast", "dissimilarity", "homogeneity", "energy"]]
 
 dataset:
