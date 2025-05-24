@@ -1,6 +1,6 @@
 import argparse
 import yaml
-from models import MIAFEx
+from models import MIAFEx, ViTTransferLearning
 from utils import chestCTforMIAFEx, chestCTforViT
 from torch.utils.data import DataLoader
 import torch
@@ -11,6 +11,10 @@ import torch.optim as optim
 from utils import save_model, load_model_state
 from vit_pytorch import ViT
 from transformers import ViTImageProcessor, ViTModel
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Pipeline for ViT")
@@ -43,19 +47,19 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    viT = ViT(
-        image_size = 224,
-        patch_size = 16,
-        num_classes = 4,
-        dim = 1024,
-        depth = 6,
-        heads = 16,
-        mlp_dim = 2048,
-        dropout = 0.1,
-        emb_dropout = 0.1
-    ).to(device)
+    # viT = ViT(
+    #     image_size = 224,
+    #     patch_size = 16,
+    #     num_classes = 4,
+    #     dim = 1024,
+    #     depth = 6,
+    #     heads = 16,
+    #     mlp_dim = 2048,
+    #     dropout = 0.1,
+    #     emb_dropout = 0.1
+    # ).to(device)
     
-    # viT = ViTModel.from_pretrained('google/vit-base-patch16-224-in21k').to(device)
+    viT = ViTTransferLearning(num_classes=4, pretrained=True, freeze_backbone=True).to(device)
 
     criterion = nn.CrossEntropyLoss()
     num_epochs = config["model"]["epochs"]
@@ -75,9 +79,8 @@ if __name__ == "__main__":
         
             optimizer.zero_grad()
             outputs = viT(inputs)
-            logits = outputs.logits  
 
-            loss = criterion(logits, labels)
+            loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
             
@@ -88,22 +91,43 @@ if __name__ == "__main__":
 
 
 
-    viT.eval()  # Set model to evaluation mode
-    correct_pred = 0
-    total_pred = 0
+        viT.eval()
+        correct_pred = 0
+        total_pred = 0
 
-    with torch.no_grad():
-        test_bar = tqdm(test_loader, desc='Testing', unit='batch')
-        for inputs, labels in test_bar:
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = viT(inputs)
-            _, pred = torch.max(outputs.data, 1)
-            total_pred += labels.size(0)
-            correct_pred += (pred == labels).sum().item()
-            test_bar.set_postfix({'acc': f'{100*correct_pred/total_pred:.2f}%'})
+        all_preds = []
+        all_labels = []
 
-    print(f'\n Test Accuracy: {100 * correct_pred / total_pred:.2f}%')
+        with torch.no_grad():
+            test_bar = tqdm(test_loader, desc='Testing', unit='batch')
+            for inputs, labels in test_bar:
+                inputs, labels = inputs.to(device), labels.to(device)
+                outputs = viT(inputs)
+                _, pred = torch.max(outputs.data, 1)
 
+                total_pred += labels.size(0)
+                correct_pred += (pred == labels).sum().item()
 
-    # save the model
-    save_model(viT, optimizer, config["model"]["save_path"])
+                all_preds.extend(pred.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
+
+                test_bar.set_postfix({'acc': f'{100*correct_pred/total_pred:.2f}%'})
+
+        acc = 100 * correct_pred / total_pred
+        print(f'\n Test Accuracy: {acc:.2f}%')
+
+        # Tính confusion matrix
+        cm = confusion_matrix(all_labels, all_preds)
+        print("Confusion Matrix:")
+        print(cm)
+
+        # Vẽ confusion matrix dùng seaborn heatmap (nếu cần)
+        plt.figure(figsize=(8,6))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+        plt.xlabel('Predicted label')
+        plt.ylabel('True label')
+        plt.title('Confusion Matrix')
+        plt.show()
+
+        # Lưu model
+        save_model(viT, optimizer, config["model"]["save_path"])
