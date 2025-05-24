@@ -30,10 +30,17 @@ class SVMClassifier:
         kernel="rbf",
         degree=3,
         random_state=42,
+        gamma="scale",
         feature_extractor=HOGFeatureExtractor(),
         model_path="svm_model.pkl",
     ):
-        self.model = SVC(C=C, kernel=kernel, degree=degree, random_state=random_state)
+        self.model = SVC(
+            C=C,
+            kernel=kernel,
+            degree=degree,
+            random_state=random_state,
+            gamma=gamma,
+        )
         self.feature_extractor = feature_extractor
         self.model_path = model_path
 
