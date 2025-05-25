@@ -3,7 +3,7 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
-from skimage.feature import local_binary_pattern
+from skimage.feature import local_binary_pattern, hog
 from FeatureExtractors.feature_extractor import (
     HOGFeatureExtractor,
     LBPFeatureExtractor,
@@ -39,14 +39,21 @@ def load_random_image():
 
 def visualize_hog(img, hog_extractor):
     """Trực quan hóa HOG features."""
-    hog_features = hog_extractor.extract(img)
-    # HOG features là vector 1D, reshape lại để trực quan hóa
-    cell_size = hog_extractor.params["pixels_per_cell"][0]
-    num_cells_x = img.shape[1] // cell_size
-    num_cells_y = img.shape[0] // cell_size
-    hog_image = hog_features.reshape((num_cells_y, num_cells_x, -1)).mean(axis=2)
+    # Sử dụng visualize=True để lấy ảnh HOG
+    _, hog_image = hog(
+        img,
+        orientations=hog_extractor.params["orientations"],
+        pixels_per_cell=hog_extractor.params["pixels_per_cell"],
+        cells_per_block=hog_extractor.params["cells_per_block"],
+        block_norm=hog_extractor.params["block_norm"],
+        visualize=True,
+        feature_vector=hog_extractor.params["feature_vector"],
+    )
+    # Chuẩn hóa ảnh HOG về [0, 255]
     hog_image = (
-        (hog_image - hog_image.min()) / (hog_image.max() - hog_image.min()) * 255
+        (hog_image - hog_image.min())
+        / (hog_image.max() - hog_image.min() + 1e-10)
+        * 255
     )
     return hog_image.astype(np.uint8)
 
@@ -59,7 +66,7 @@ def visualize_lbp(img, lbp_extractor):
         R=lbp_extractor.params["R"],
         method=lbp_extractor.params["method"],
     )
-    lbp_image = (lbp - lbp.min()) / (lbp.max() - lbp.min()) * 255
+    lbp_image = (lbp - lbp.min()) / (lbp.max() - lbp.min() + 1e-10) * 255
     return lbp_image.astype(np.uint8)
 
 
@@ -78,7 +85,7 @@ def visualize_gabor(img, gabor_extractor):
     gabor_image = cv2.filter2D(img, cv2.CV_32F, kernel)
     gabor_image = (
         (gabor_image - gabor_image.min())
-        / (gabor_image.max() - gabor_image.min())
+        / (gabor_image.max() - gabor_image.min() + 1e-10)
         * 255
     )
     return gabor_image.astype(np.uint8)
