@@ -110,7 +110,7 @@ def visualize_features():
     sift_extractor = SIFTFeatureExtractor(max_keypoints=500)
 
     # Tải ảnh ngẫu nhiên
-    img = load_random_image(data_dir)
+    img = load_random_image()
 
     # Trích xuất và trực quan hóa các đặc trưng
     hog_image = visualize_hog(img, hog_extractor)
