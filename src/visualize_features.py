@@ -1,9 +1,8 @@
 import os
 import random
 import numpy as np
-import cv2
-from skimage.feature import hog, local_binary_pattern, graycomatrix, graycoprops
 import matplotlib.pyplot as plt
+import cv2
 from FeatureExtractors.feature_extractor import (
     HOGFeatureExtractor,
     LBPFeatureExtractor,
@@ -12,19 +11,29 @@ from FeatureExtractors.feature_extractor import (
 )
 
 
-def load_random_image(data_dir):
-    """Tải ngẫu nhiên một ảnh từ thư mục."""
-    image_files = [
-        f for f in os.listdir(data_dir) if f.endswith((".png", ".jpg", ".jpeg"))
-    ]
-    if not image_files:
-        raise ValueError("Không tìm thấy ảnh trong thư mục.")
+def load_random_image():
+    # Get all test directories
+    test_dir = "Dataset/Data/test"
+    categories = os.listdir(test_dir)
 
-    random_image_path = os.path.join(data_dir, random.choice(image_files))
-    img = cv2.imread(random_image_path, cv2.IMREAD_GRAYSCALE)
-    if img is None:
-        raise ValueError(f"Không thể tải ảnh: {random_image_path}")
-    return img
+    # Randomly select a category
+    category = random.choice(categories)
+    category_path = os.path.join(test_dir, category)
+
+    # Get all images in the selected category
+    images = [
+        f for f in os.listdir(category_path) if f.endswith((".png", ".jpg", ".jpeg"))
+    ]
+
+    # Randomly select an image
+    image_name = random.choice(images)
+    image_path = os.path.join(category_path, image_name)
+
+    # Read the image
+    img = cv2.imread(image_path)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    return img, image_name
 
 
 def visualize_hog(img, hog_extractor):
