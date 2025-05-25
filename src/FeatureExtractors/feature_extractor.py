@@ -1,151 +1,147 @@
 import os
 import random
 import numpy as np
-import torch
-from torch.utils.data import Dataset, DataLoader
-from skimage.feature import hog, local_binary_pattern, graycomatrix, graycoprops
-from skimage.filters import gabor_kernel
-from scipy.ndimage import convolve
 import cv2
+import matplotlib.pyplot as plt
+from src.FeatureExtractors.feature_extractor import (
+    HOGFeatureExtractor,
+    LBPFeatureExtractor,
+    GaborExtractor,
+    SIFTFeatureExtractor,
+)
 
 
-class HOGFeatureExtractor:
-    def __init__(self):
-        self.params = {
-            "orientations": 9,
-            "pixels_per_cell": (8, 8),
-            "cells_per_block": (2, 2),
-            "block_norm": "L2-Hys",
-            "feature_vector": True,
-        }
+def load_random_image(data_dir):
+    """Tải ngẫu nhiên một ảnh từ thư mục."""
+    image_files = [
+        f for f in os.listdir(data_dir) if f.endswith((".png", ".jpg", ".jpeg"))
+    ]
+    if not image_files:
+        raise ValueError("Không tìm thấy ảnh trong thư mục.")
 
-    def extract(self, img):
-        # Convert to grayscale if image is color
-        if len(img.shape) == 3:
-            if img.shape[2] == 3:  # RGB image
-                img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-            elif img.shape[2] == 1:  # Single channel image
-                img = img.squeeze()
-
-        # Ensure image is 2D
-        if len(img.shape) != 2:
-            raise ValueError(f"Expected 2D image, got shape {img.shape}")
-
-        return hog(
-            img,
-            orientations=self.params["orientations"],
-            pixels_per_cell=self.params["pixels_per_cell"],
-            cells_per_block=self.params["cells_per_block"],
-            block_norm=self.params["block_norm"],
-            feature_vector=self.params["feature_vector"],
-        )
+    random_image_path = os.path.join(data_dir, random.choice(image_files))
+    img = cv2.imread(random_image_path, cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        raise ValueError(f"Không thể tải ảnh: {random_image_path}")
+    return img
 
 
-class LBPFeatureExtractor:
-    def __init__(self):
-        self.params = {"P": 8, "R": 1, "method": "uniform"}
-
-    def extract(self, img):
-        # Convert tensor to numpy and squeeze to remove single-dimensional entries
-        if isinstance(img, torch.Tensor):
-            img = img.numpy()
-        img = np.squeeze(img)
-
-        lbp = local_binary_pattern(
-            img, P=self.params["P"], R=self.params["R"], method=self.params["method"]
-        )
-        nbins = self.params["P"] + 2
-        hist, _ = np.histogram(
-            lbp.ravel(), bins=np.arange(0, nbins + 1), range=(0, nbins), density=True
-        )
-        return hist
+def visualize_hog(img, hog_extractor):
+    """Trực quan hóa HOG features."""
+    hog_features = hog_extractor.extract(img)
+    # HOG features là vector 1D, cần reshape lại để trực quan hóa
+    # Tính số cell và tạo lưới hiển thị
+    cell_size = hog_extractor.params["pixels_per_cell"][0]
+    num_cells_x = img.shape[1] // cell_size
+    num_cells_y = img.shape[0] // cell_size
+    hog_image = hog_features.reshape((num_cells_y, num_cells_x, -1)).mean(axis=2)
+    hog_image = (
+        (hog_image - hog_image.min()) / (hog_image.max() - hog_image.min()) * 255
+    )
+    return hog_image.astype(np.uint8)
 
 
-class GLCMFeatureExtractor:
-    def __init__(self):
-        self.distances = [1]
-        self.angles = [0, np.pi / 4, np.pi / 2, 3 * np.pi / 4]
-        self.properties = [
-            "contrast",
-            "dissimilarity",
-            "homogeneity",
-            "energy",
-            "correlation",
-            "ASM",
-        ]
-
-    def extract(self, img):
-        glcm = graycomatrix(
-            img,
-            distances=self.distances,
-            angles=self.angles,
-            symmetric=True,
-            normed=True,
-        )
-
-        return np.concatenate([graycoprops(glcm, p).flatten() for p in self.properties])
+def visualize_lbp(img, lbp_extractor):
+    """Trực quan hóa LBP features."""
+    lbp = lbp_extractor.extract(img)
+    # LBP trả về histogram, ta sử dụng ảnh LBP trực tiếp
+    lbp_image = local_binary_pattern(
+        img,
+        P=lbp_extractor.params["P"],
+        R=lbp_extractor.params["R"],
+        method=lbp_extractor.params["method"],
+    )
+    lbp_image = (
+        (lbp_image - lbp_image.min()) / (lbp_image.max() - lbp_image.min()) * 255
+    )
+    return lbp_image.astype(np.uint8)
 
 
-class GaborExtractor:
-    def __init__(self):
-        self.params = {
-            "ksize": (21, 21),
-            "sigmas": [1, 3],
-            "thetas": np.linspace(0, np.pi, 4, endpoint=False),
-            "lambdas": [np.pi / 4, np.pi / 2],
-            "gamma": 0.5,
-            "psi": 0,
-        }
-
-    def extract(self, image):
-        p = self.params
-        feats = []
-        image = image.astype(np.float32)
-        for sigma in p["sigmas"]:
-            for theta in p["thetas"]:
-                for lam in p["lambdas"]:
-                    kernel = cv2.getGaborKernel(
-                        ksize=p["ksize"],
-                        sigma=sigma,
-                        theta=theta,
-                        lambd=lam,
-                        gamma=p["gamma"],
-                        psi=p["psi"],
-                        ktype=cv2.CV_32F,
-                    )
-                    filtered = cv2.filter2D(image, cv2.CV_32F, kernel)
-                    feats.append(filtered.mean())
-                    feats.append(filtered.var())
-        return np.array(feats)
+def visualize_gabor(img, gabor_extractor):
+    """Trực quan hóa Gabor features."""
+    feats = gabor_extractor.extract(img)
+    # Tạo một ảnh đại diện bằng cách áp dụng một kernel Gabor
+    params = gabor_extractor.params
+    kernel = cv2.getGaborKernel(
+        ksize=params["ksize"],
+        sigma=params["sigmas"][0],
+        theta=params["thetas"][0],
+        lambd=params["lambdas"][0],
+        gamma=params["gamma"],
+        psi=params["psi"],
+        ktype=cv2.CV_32F,
+    )
+    gabor_image = cv2.filter2D(img, cv2.CV_32F, kernel)
+    gabor_image = (
+        (gabor_image - gabor_image.min())
+        / (gabor_image.max() - gabor_image.min())
+        * 255
+    )
+    return gabor_image.astype(np.uint8)
 
 
-class SIFTFeatureExtractor:
-    def __init__(self, max_keypoints=500):
-        """
-        max_keypoints : int
-           Số keypoint lớn nhất sẽ giữ lại; nếu ít hơn sẽ được padding zeros.
-        """
-        self.sift = cv2.SIFT_create()
-        self.max_keypoints = max_keypoints
+def visualize_sift(img, sift_extractor):
+    """Trực quan hóa SIFT keypoints."""
+    keypoints, descriptors = sift_extractor.sift.detectAndCompute(img, None)
+    sift_image = cv2.drawKeypoints(
+        img, keypoints, None, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS
+    )
+    return sift_image
 
-    def extract(self, img):
-        keypoints, descriptors = self.sift.detectAndCompute(img, None)
 
-        # Nếu không có descriptor, tạo mảng rỗng shape=(0,128)
-        if descriptors is None:
-            descriptors = np.zeros((0, 128), dtype=np.float32)
+def visualize_features():
+    # Đường dẫn đến thư mục chứa ảnh
+    data_dir = "Dataset/Data/train"
 
-        # Sắp xếp theo response strength (ưu tiên keypoint tin cậy nhất)
-        if keypoints:
-            responses = np.array([kp.response for kp in keypoints])
-            order = np.argsort(-responses)
-            descriptors = descriptors[order]
+    # Khởi tạo các bộ trích xuất đặc trưng
+    hog_extractor = HOGFeatureExtractor()
+    lbp_extractor = LBPFeatureExtractor()
+    gabor_extractor = GaborExtractor()
+    sift_extractor = SIFTFeatureExtractor(max_keypoints=500)
 
-        # Pad hoặc truncate về đúng số max_keypoints
-        n = descriptors.shape[0]
-        if n < self.max_keypoints:
-            padding = np.zeros((self.max_keypoints - n, 128), dtype=descriptors.dtype)
-            descriptors = np.vstack([descriptors, padding])
-        else:
-            descriptors = descriptors[: self.max_keypoints]
-        return descriptors.flatten()
+    # Tải ảnh ngẫu nhiên
+    img = load_random_image(data_dir)
+
+    # Trích xuất và trực quan hóa các đặc trưng
+    hog_image = visualize_hog(img, hog_extractor)
+    lbp_image = visualize_lbp(img, lbp_extractor)
+    gabor_image = visualize_gabor(img, gabor_extractor)
+    sift_image = visualize_sift(img, sift_extractor)
+
+    # Tạo figure để hiển thị
+    plt.figure(figsize=(15, 10))
+
+    plt.subplot(2, 3, 1)
+    plt.imshow(img, cmap="gray")
+    plt.title("Ảnh gốc")
+    plt.axis("off")
+
+    plt.subplot(2, 3, 2)
+    plt.imshow(hog_image, cmap="gray")
+    plt.title("HOG Features")
+    plt.axis("off")
+
+    plt.subplot(2, 3, 3)
+    plt.imshow(lbp_image, cmap="gray")
+    plt.title("LBP Features")
+    plt.axis("off")
+
+    plt.subplot(2, 3, 4)
+    plt.imshow(gabor_image, cmap="gray")
+    plt.title("Gabor Features")
+    plt.axis("off")
+
+    plt.subplot(2, 3, 5)
+    plt.imshow(sift_image, cmap="gray")
+    plt.title("SIFT Keypoints")
+    plt.axis("off")
+
+    plt.tight_layout()
+    output_path = "feature_visualization.png"
+    plt.savefig(output_path)
+    plt.close()
+    print(f"Đã lưu hình ảnh trực quan tại: {output_path}")
+
+
+if __name__ == "__main__":
+    visualize_features()
