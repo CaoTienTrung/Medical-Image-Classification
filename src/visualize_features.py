@@ -3,12 +3,13 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
-from skimage.feature import local_binary_pattern, hog
+from skimage.feature import local_binary_pattern, hog, graycomatrix, graycoprops
 from FeatureExtractors.feature_extractor import (
     HOGFeatureExtractor,
     LBPFeatureExtractor,
     GaborExtractor,
     SIFTFeatureExtractor,
+    GLCMFeatureExtractor,
 )
 
 
@@ -109,6 +110,7 @@ def visualize_features():
     lbp_extractor = LBPFeatureExtractor()
     gabor_extractor = GaborExtractor()
     sift_extractor = SIFTFeatureExtractor()
+    glcm_extractor = GLCMFeatureExtractor()
 
     # Convert image to grayscale for feature extraction
     gray_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
@@ -118,6 +120,7 @@ def visualize_features():
     lbp_image = visualize_lbp(gray_img, lbp_extractor)
     gabor_image = visualize_gabor(gray_img, gabor_extractor)
     sift_image = visualize_sift(gray_img, sift_extractor)
+    glcm_image = visualize_glcm(gray_img, glcm_extractor)
 
     # Create visualization
     plt.figure(figsize=(15, 10))
@@ -151,6 +154,8 @@ def visualize_features():
     plt.imshow(sift_image, cmap="gray")
     plt.title("SIFT Keypoints")
     plt.axis("off")
+
+    # GLCM visulization
 
     plt.tight_layout()
     output_path = f"feature_visualization_{img_name}.png"
