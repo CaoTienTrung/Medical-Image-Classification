@@ -177,4 +177,8 @@ else:
     # Hiển thị biểu đồ
     plt.show()
 
+    save_filename = "dataset_label_distribution.png"
+    plt.savefig(save_filename, dpi=300, bbox_inches="tight")
+    print(f"\nBiểu đồ đã được lưu thành file: {save_filename}")
+
 print("\nHoàn thành.")
