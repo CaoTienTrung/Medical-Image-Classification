@@ -1,7 +1,7 @@
 import argparse
 import yaml
 from models import MIAFEx, SVMClassifier, LRClassifier, RFClassifier, XGBoostClassifier
-from utils import chestCTforMIAFEx
+from utils import chestCTforMIAFEx, chestCTforViT
 from torch.utils.data import DataLoader
 import torch
 import torch.nn as nn
@@ -33,9 +33,9 @@ if __name__ == "__main__":
     args = parse_args()
     config = load_yaml(args.config)
     
-    train_set = chestCTforMIAFEx(config["data"]["path"], "train", config["data"]["img_size"])
-    dev_set = chestCTforMIAFEx(config["data"]["path"], "valid", config["data"]["img_size"])
-    test_set = chestCTforMIAFEx(config["data"]["path"], "test", config["data"]["img_size"])
+    train_set = chestCTforViT(config["data"]["path"], "train", config["data"]["img_size"])
+    dev_set = chestCTforViT(config["data"]["path"], "valid", config["data"]["img_size"])
+    test_set = chestCTforViT(config["data"]["path"], "test", config["data"]["img_size"])
     
     train_loader = DataLoader(train_set, batch_size=config["data"]["batch_size"], shuffle=True)
     dev_loader = DataLoader(dev_set, batch_size=config["data"]["batch_size"], shuffle=False)
@@ -44,10 +44,15 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     viT = MIAFEx(
-        d_model = config["model"]["d_model"],
-        encoder_layers= config["model"]["encoder_layers"],
-        patch_size= config["model"]["patch_size"],
-        num_classes= config["model"]["num_classes"],
+        image_size = 224,
+        patch_size = 16,
+        num_classes = 4,
+        dim = 1024,
+        depth = 6,
+        heads = 16,
+        mlp_dim = 2048,
+        dropout = 0.3,
+        emb_dropout = 0.1
     ).to(device)
 
     criterion = nn.CrossEntropyLoss()

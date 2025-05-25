@@ -1,6 +1,6 @@
 import argparse
 import yaml
-from models import MIAFEx, ViTTransferLearning
+from models import MIAFEx, ViTTransferLearning, ViT
 from utils import chestCTforMIAFEx, chestCTforViT
 from torch.utils.data import DataLoader
 import torch
@@ -9,7 +9,6 @@ import torch.optim as optim
 from tqdm import tqdm
 import torch.optim as optim
 from utils import save_model, load_model_state
-from vit_pytorch import ViT
 from transformers import ViTImageProcessor, ViTModel
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
@@ -47,19 +46,19 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # viT = ViT(
-    #     image_size = 224,
-    #     patch_size = 16,
-    #     num_classes = 4,
-    #     dim = 1024,
-    #     depth = 6,
-    #     heads = 16,
-    #     mlp_dim = 2048,
-    #     dropout = 0.1,
-    #     emb_dropout = 0.1
-    # ).to(device)
+    viT = ViT(
+        image_size = 224,
+        patch_size = 16,
+        num_classes = 4,
+        dim = 1024,
+        depth = 6,
+        heads = 16,
+        mlp_dim = 2048,
+        dropout = 0.1,
+        emb_dropout = 0.1
+    ).to(device)
     
-    viT = ViTTransferLearning(num_classes=4, pretrained=True, freeze_backbone=True).to(device)
+    # viT = ViTTransferLearning(num_classes=4, pretrained=True, freeze_backbone=True).to(device)
 
     criterion = nn.CrossEntropyLoss()
     num_epochs = config["model"]["epochs"]
@@ -70,24 +69,37 @@ if __name__ == "__main__":
     viT.train()
     for epoch in range(num_epochs):
         running_loss = 0.0
+        correct_train = 0
+        total_train = 0
+
         progress_bar = tqdm(train_loader, 
                         desc=f'Epoch {epoch+1}/{num_epochs}', 
                         unit='batch')
         
         for batch_id, (inputs, labels) in enumerate(progress_bar):
             inputs, labels = inputs.to(device), labels.to(device)
-        
+
             optimizer.zero_grad()
             outputs = viT(inputs)
 
-            loss = criterion(outputs, labels)
+            loss = criterion(outputs, labels.long())
             loss.backward()
             optimizer.step()
-            
+
+            # Đếm số đúng
+            _, preds = torch.max(outputs.data, 1)
+            correct_train += (preds == labels).sum().item()
+            total_train += labels.size(0)
+
             running_loss += loss.item()
-            progress_bar.set_postfix({'loss': running_loss/(batch_id+1)})
-        
-        print(f'Epoch {epoch+1} - Avg Loss: {running_loss/len(train_loader):.4f}')
+            progress_bar.set_postfix({
+                'loss': f'{running_loss/(batch_id+1):.4f}',
+                'acc': f'{100 * correct_train / total_train:.2f}%'
+            })
+
+        epoch_loss = running_loss / len(train_loader)
+        epoch_acc = 100 * correct_train / total_train
+        print(f'Epoch {epoch+1} - Avg Loss: {epoch_loss:.4f} | Train Acc: {epoch_acc:.2f}%')
 
 
 
@@ -130,4 +142,4 @@ if __name__ == "__main__":
         plt.show()
 
         # Lưu model
-        save_model(viT, optimizer, config["model"]["save_path"])
+    save_model(viT, optimizer, config["model"]["save_path"])

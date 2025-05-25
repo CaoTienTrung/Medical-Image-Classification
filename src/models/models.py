@@ -229,6 +229,8 @@ class PositionalEmbedding(nn.Module):
     def __init__(self, d_model, max_len=5000):
         super(PositionalEmbedding, self).__init__()
         # Compute the positional encodings once in log space.
+        max_len = int(max_len)
+        d_model = int(d_model)
         pe = torch.zeros(max_len, d_model).float()
         pe.require_grad = False
 
@@ -339,119 +341,121 @@ class Encoder(nn.Module):
         return self.norm(x)
 
 
-class MIAFEx(nn.Module):
-    def __init__(self, d_model=768, encoder_layers=3, patch_size=16, num_classes=4):
-        super(MIAFEx, self).__init__()
+# class MIAFEx(nn.Module):
+#     def __init__(self, d_model=768, encoder_layers=3, patch_size=16, num_classes=4):
+#         super(MIAFEx, self).__init__()
 
-        self.d_model = d_model
+#         self.d_model = d_model
 
 
-        self.patch_size = patch_size
-        self.num_patches = (224 // patch_size) ** 2
+#         self.patch_size = patch_size
+#         self.num_patches = (224**2 // patch_size**2) 
 
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, d_model))
+#         # self.cls_token = nn.Parameter(torch.zeros(1, 1, d_model))
 
-        self.PE = PositionalEmbedding(d_model, max_len=self.num_patches + 1)
+#         self.cls_token = nn.Parameter(torch.randn(1, 1, d_model))
 
-        self.dropout = nn.Dropout(0.1)
-        self.patch_embed = nn.Conv2d(
-            in_channels=3,
-            out_channels=d_model,
-            kernel_size=patch_size,
-            stride=patch_size,
-        )
+#         self.PE = PositionalEmbedding(d_model, max_len=self.num_patches + 1)
 
-        self.encoder = Encoder(
-            encoder_layers=encoder_layers,
-            d_model=d_model,
-            norm_layer=nn.LayerNorm(d_model),
-        )
+#         self.dropout = nn.Dropout(0.1)
+#         self.patch_embed = nn.Conv2d(
+#             in_channels=3,
+#             out_channels=d_model,
+#             kernel_size=patch_size,
+#             stride=patch_size,
+#         )
 
-        self.w_refine = nn.Parameter(torch.ones(d_model))
+#         self.encoder = Encoder(
+#             encoder_layers=encoder_layers,
+#             d_model=d_model,
+#             norm_layer=nn.LayerNorm(d_model),
+#         )
 
-        self.softmax = nn.Sequential(
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, num_classes),
-            nn.Softmax(dim=-1),
-        )
+#         self.w_refine = nn.Parameter(torch.randn(d_model))
 
-        self.classifier = nn.Sequential(
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, num_classes),
-        )
+#         self.softmax = nn.Sequential(
+#             nn.LayerNorm(d_model),
+#             nn.Linear(d_model, num_classes),
+#             nn.Softmax(dim=-1),
+#         )
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#         self.classifier = nn.Sequential(
+#             nn.LayerNorm(d_model),
+#             nn.Linear(d_model, num_classes),
+#         )
 
-    def forward(self, x):
-        # (B, 224, 224, 3) - > (B, 3, 224, 224)
-        x = x.permute(0, 3, 1, 2)
+#         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+#     def forward(self, x):
+#         # (B, 224, 224, 3) - > (B, 3, 224, 224)
+#         x = x.permute(0, 3, 1, 2)
         
-        B, C, L, L = x.shape
+#         B, C, L, L = x.shape
 
-        # Patch embedding: (B, 3, 224, 224) -> (B, d_model, 16, 16)
-        x = self.patch_embed(x)
+#         # Patch embedding: (B, 3, 224, 224) -> (B, d_model, 16, 16)
+#         x = self.patch_embed(x)
 
-        # Flatten -> (B, num_patches, d_model)
-        x = x.flatten(2).transpose(1, 2)
+#         # Flatten -> (B, num_patches, d_model)
+#         x = x.flatten(2).transpose(1, 2)
 
-        cls_tokens = self.cls_token.expand(B, -1, -1)
-        x = torch.cat((cls_tokens, x), dim=1)
+#         cls_tokens = self.cls_token.expand(B, -1, -1)
+#         x = torch.cat((cls_tokens, x), dim=1)
 
-        # PE
-        x = x + self.PE(x)
-        x = self.dropout(x)
+#         # PE
+#         x = x + self.PE(x)
+#         x = self.dropout(x)
 
-        x = self.encoder(x)
+#         x = self.encoder(x)
 
-        # CLS Token
-        cls_output = x[:, 0]
+#         # CLS Token
+#         cls_output = x[:, 0]
 
-        refined_output = cls_output * self.w_refine
+#         refined_output = cls_output * self.w_refine
 
-        output = self.classifier(refined_output)
+#         output = self.classifier(refined_output)
 
-        return output
+#         return output
 
-    def extract_features(self, x):
-        # (B, 224, 224, 3) - > (B, 3, 224, 224)
-        x = x.permute(0, 3, 1, 2)
+#     def extract_features(self, x):
+#         # (B, 224, 224, 3) - > (B, 3, 224, 224)
+#         x = x.permute(0, 3, 1, 2)
         
-        B, C, L, L = x.shape
+#         B, C, L, L = x.shape
 
-        # Patch embedding: (B, 3, 224, 224) -> (B, d_model, 16, 16)
-        x = self.patch_embed(x)
+#         # Patch embedding: (B, 3, 224, 224) -> (B, d_model, 16, 16)
+#         x = self.patch_embed(x)
 
-        # Flatten -> (B, num_patches, d_model)
-        x = x.flatten(2).transpose(1, 2)
+#         # Flatten -> (B, num_patches, d_model)
+#         # x = x.flatten(2).transpose(1, 2)
 
-        cls_tokens = self.cls_token.expand(B, -1, -1)
-        x = torch.cat((cls_tokens, x), dim=1)
+#         cls_tokens = self.cls_token.repeat(B, 1, 1)
+#         x = torch.cat((cls_tokens, x), dim=1)
 
-        # PE
-        x = x + self.PE(x)
-        x = self.dropout(x)
+#         # PE
+#         x = x + self.PE(x)
+#         x = self.dropout(x)
 
-        x = self.encoder(x)
+#         x = self.encoder(x)
 
-        # CLS Token
-        cls_output = x[:, 0]
+#         # CLS Token
+#         cls_output = x[:, 0]
 
-        refined_output = cls_output * self.w_refine
-        return refined_output
+#         refined_output = cls_output * self.w_refine
+#         return refined_output
 
-    def features_from_loader(self, loader):
-        features = []
-        labels = []
-        for batch in tqdm(loader, desc = 'Extracting features'):
-            x, y = batch
-            x = x.to(self.device)
-            with torch.no_grad():
-                feature = self.extract_features(x)
-                features.append(feature.cpu().numpy())
-                labels.append(y.cpu().numpy())
-        features = np.concatenate(features, axis=0)
-        labels = np.concatenate(labels, axis=0)
-        return features, labels
+#     def features_from_loader(self, loader):
+#         features = []
+#         labels = []
+#         for batch in tqdm(loader, desc = 'Extracting features'):
+#             x, y = batch
+#             x = x.to(self.device)
+#             with torch.no_grad():
+#                 feature = self.extract_features(x)
+#                 features.append(feature.cpu().numpy())
+#                 labels.append(y.cpu().numpy())
+#         features = np.concatenate(features, axis=0)
+#         labels = np.concatenate(labels, axis=0)
+#         return features, labels
     
 
 class BasicBlock(nn.Module):
@@ -553,11 +557,14 @@ class ResNet18(nn.Module):
         o = self.fc(x)
         
         return o
+    
+import timm
 
 class ViTTransferLearning(nn.Module):
     def __init__(self, num_classes, pretrained=True, freeze_backbone=False):
         super().__init__()
         # Load pretrained ViT trên ImageNet-21k
+        
         self.model = timm.create_model('vit_base_patch16_224_in21k', pretrained=pretrained)
         
         # Thay lớp cuối cho phù hợp với số lớp mới
@@ -573,4 +580,281 @@ class ViTTransferLearning(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+
+class MIAFExTF(nn.Module):
+    def __init__(self,
+                 vit_model_name='vit_base_patch16_224_in21k',
+                 num_classes=4,
+                 freeze_backbone: bool = False):
+        super(MIAFExTF, self).__init__()
+
+        self.backbone = timm.create_model('vit_base_patch16_224_in21k', pretrained=True)
+        embed_dim = self.backbone.num_features  # typically 768
+
+        # Optional: freeze ViT backbone parameters
+        if freeze_backbone:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
+
+        self.w_refine = nn.Parameter(torch.ones(embed_dim), requires_grad=True)
+        # Fully connected classification head
+        self.classifier = nn.Linear(embed_dim, num_classes)
+
+    def forward(self, x):
+        # Extract CLS token feature from ViT backbone
+        h_out = self.backbone.forward_features(x)  # (B, D)
+
+        cls_token = h_out[:, 0, :]                 # (B, D)
+
+        # Refinement
+        refined = cls_token * self.w_refine        # (B, D)
+        # Classification
+        logits = self.classifier(refined)          # (B, num_classes)
+        return logits
+
+    def extract_features(self, x):
+        # (B, 224, 224, 3) - > (B, 3, 224, 224)
+        x = x.permute(0, 3, 1, 2)
+        
+        cls_output = self.backbone.forward_features(x)
+
+        refined_output = cls_output * self.w_refine
+        return refined_output
+
+    def features_from_loader(self, loader):
+        features = []
+        labels = []
+        for batch in tqdm(loader, desc = 'Extracting features'):
+            x, y = batch
+            x = x.to(self.device)
+            with torch.no_grad():
+                feature = self.extract_features(x)
+                features.append(feature.cpu().numpy())
+                labels.append(y.cpu().numpy())
+        features = np.concatenate(features, axis=0)
+        labels = np.concatenate(labels, axis=0)
+        return features, labels
+
+
+import torch
+from torch import nn
+
+from einops import rearrange, repeat
+from einops.layers.torch import Rearrange
+
+# helpers
+
+def pair(t):
+    return t if isinstance(t, tuple) else (t, t)
+
+# classes
+
+class FeedForward(nn.Module):
+    def __init__(self, dim, hidden_dim, dropout = 0.):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.LayerNorm(dim),
+            nn.Linear(dim, hidden_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, dim),
+            nn.Dropout(dropout)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+class Attention(nn.Module):
+    def __init__(self, dim, heads = 8, dim_head = 64, dropout = 0.):
+        super().__init__()
+        inner_dim = dim_head *  heads
+        project_out = not (heads == 1 and dim_head == dim)
+
+        self.heads = heads
+        self.scale = dim_head ** -0.5
+
+        self.norm = nn.LayerNorm(dim)
+
+        self.attend = nn.Softmax(dim = -1)
+        self.dropout = nn.Dropout(dropout)
+
+        self.to_qkv = nn.Linear(dim, inner_dim * 3, bias = False)
+
+        self.to_out = nn.Sequential(
+            nn.Linear(inner_dim, dim),
+            nn.Dropout(dropout)
+        ) if project_out else nn.Identity()
+
+    def forward(self, x):
+        x = self.norm(x)
+
+        qkv = self.to_qkv(x).chunk(3, dim = -1)
+        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), qkv)
+
+        dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
+
+        attn = self.attend(dots)
+        attn = self.dropout(attn)
+
+        out = torch.matmul(attn, v)
+        out = rearrange(out, 'b h n d -> b n (h d)')
+        return self.to_out(out)
+
+class Transformer(nn.Module):
+    def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout = 0.):
+        super().__init__()
+        self.norm = nn.LayerNorm(dim)
+        self.layers = nn.ModuleList([])
+        for _ in range(depth):
+            self.layers.append(nn.ModuleList([
+                Attention(dim, heads = heads, dim_head = dim_head, dropout = dropout),
+                FeedForward(dim, mlp_dim, dropout = dropout)
+            ]))
+
+    def forward(self, x):
+        for attn, ff in self.layers:
+            x = attn(x) + x
+            x = ff(x) + x
+
+        return self.norm(x)
+
+class ViT(nn.Module):
+    def __init__(self, *, image_size, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'cls', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0.):
+        super().__init__()
+        image_height, image_width = pair(image_size)
+        patch_height, patch_width = pair(patch_size)
+
+        assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
+
+        num_patches = (image_height // patch_height) * (image_width // patch_width)
+        patch_dim = channels * patch_height * patch_width
+        assert pool in {'cls', 'mean'}, 'pool type must be either cls (cls token) or mean (mean pooling)'
+
+        self.to_patch_embedding = nn.Sequential(
+            Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width),
+            nn.LayerNorm(patch_dim),
+            nn.Linear(patch_dim, dim),
+            nn.LayerNorm(dim),
+        )
+
+        self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim))
+        self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
+        self.dropout = nn.Dropout(emb_dropout)
+
+        self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim, dropout)
+
+        self.pool = pool
+        self.to_latent = nn.Identity()
+
+        self.mlp_head = nn.Linear(dim, num_classes)
+
+    def forward(self, img):
+        x = self.to_patch_embedding(img)
+        b, n, _ = x.shape
+
+        cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
+        x = torch.cat((cls_tokens, x), dim=1)
+        x += self.pos_embedding[:, :(n + 1)]
+        x = self.dropout(x)
+
+        x = self.transformer(x)
+
+        x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0]
+
+        x = self.to_latent(x)
+        return self.mlp_head(x)
+
+
+class MIAFEx(nn.Module):
+    def __init__(self, *, image_size, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'cls', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0.):
+        super().__init__()
+        image_height, image_width = pair(image_size)
+        patch_height, patch_width = pair(patch_size)
+
+        assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
+
+        num_patches = (image_height // patch_height) * (image_width // patch_width)
+        patch_dim = channels * patch_height * patch_width
+        assert pool in {'cls', 'mean'}, 'pool type must be either cls (cls token) or mean (mean pooling)'
+
+        self.to_patch_embedding = nn.Sequential(
+            Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_height, p2 = patch_width),
+            nn.LayerNorm(patch_dim),
+            nn.Linear(patch_dim, dim),
+            nn.LayerNorm(dim),
+        )
+
+        self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim))
+        self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
+        self.dropout = nn.Dropout(emb_dropout)
+
+        self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim, dropout)
+
+        self.pool = pool
+        self.to_latent = nn.Identity()
+
+        self.mlp_head = nn.Linear(dim, num_classes)
+
+        self.w_refine = nn.Parameter(torch.ones(dim), requires_grad=True)
+
+        self.classifier = nn.Sequential(
+            nn.LayerNorm(dim),
+            nn.Dropout(dropout),
+            nn.Linear(dim, num_classes),
+        )
+
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    def forward(self, img):
+        x = self.to_patch_embedding(img)
+        b, n, _ = x.shape
+
+        cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
+        x = torch.cat((cls_tokens, x), dim=1)
+        x += self.pos_embedding[:, :(n + 1)]
+        x = self.dropout(x)
+
+        x = self.transformer(x)
+
+        x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0]
+
+        cls_output = x
+        refined_output = cls_output * self.w_refine
+        
+        refined_output = self.to_latent(refined_output)
+        
+        return self.classifier(refined_output)
+
+    def extract_features(self, x):
+        x = self.to_patch_embedding(x)
+        b, n, _ = x.shape
+
+        cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b = b)
+        x = torch.cat((cls_tokens, x), dim=1)
+        x += self.pos_embedding[:, :(n + 1)]
+        x = self.dropout(x)
+
+        x = self.transformer(x)
+
+        x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0]
+
+        cls_output = x
+        refined_output = cls_output * self.w_refine
+        return refined_output
+
+    def features_from_loader(self, loader):
+        features = []
+        labels = []
+        for batch in tqdm(loader, desc = 'Extracting features'):
+            x, y = batch
+            x = x.to(self.device)
+            with torch.no_grad():
+                feature = self.extract_features(x)
+                features.append(feature.cpu().numpy())
+                labels.append(y.cpu().numpy())
+        features = np.concatenate(features, axis=0)
+        labels = np.concatenate(labels, axis=0)
+        return features, labels
+
 

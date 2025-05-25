@@ -11,7 +11,7 @@ model:
   encoder_layers: 6
   patch_size: 16
   num_classes: 4
-  epochs: 10
+  epochs: 5
   save_path: "/home/anhkhoa/Medical-Image-Classification/src/save_path/vit"
 
 
