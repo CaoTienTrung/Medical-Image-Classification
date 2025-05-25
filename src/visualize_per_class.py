@@ -9,14 +9,39 @@ dataset_path = "Dataset/Data"  # Giả sử thư mục Dataset/Data nằm trong 
 # Các tập con (splits) của dataset
 splits = ["train", "valid", "test"]
 
-# Dictionary để lưu trữ số lượng mẫu cho từng nhãn trong từng tập
-label_counts = {split: {} for split in splits}
+# Định nghĩa rõ ràng 4 nhãn cấp cao mà bạn muốn hiển thị trên biểu đồ
+target_labels = [
+    "adenocarcinoma",
+    "large.cell.carcinoma",
+    "normal",
+    "squamous.cell.carcinoma",
+]
 
-# Danh sách tất cả các nhãn dự kiến (dựa trên ảnh test)
-# Ta sẽ khám phá động các nhãn có trong dataset
-all_labels = set()
+# Dictionary để lưu trữ số lượng mẫu cho từng nhãn mục tiêu trong từng tập
+# Khởi tạo với số lượng 0 cho tất cả các nhãn mục tiêu trong mỗi split
+label_counts = {split: {label: 0 for label in target_labels} for split in splits}
 
-# 2. Thu thập số lượng mẫu cho từng nhãn trong từng tập
+
+# 2. Ánh xạ các tên folder chi tiết về nhãn cấp cao
+def map_label_to_target(label_name, target_labels):
+    """Maps a detailed folder name to one of the target high-level labels."""
+    label_name_lower = label_name.lower()
+
+    if "normal" in label_name_lower:
+        return "normal"
+    elif "adenocarcinoma" in label_name_lower:
+        return "adenocarcinoma"
+    elif "large.cell.carcinoma" in label_name_lower:
+        return "large.cell.carcinoma"
+    elif "squamous.cell.carcinoma" in label_name_lower:
+        return "squamous.cell.carcinoma"
+    else:
+        # Trường hợp không khớp với nhãn nào, có thể in cảnh báo hoặc bỏ qua
+        print(f"Cảnh báo: Tên folder '{label_name}' không khớp với nhãn mục tiêu nào.")
+        return None  # Trả về None nếu không khớp
+
+
+# 3. Thu thập số lượng mẫu, áp dụng ánh xạ
 print(f"Đang quét dataset tại: {dataset_path}")
 for split in splits:
     split_path = os.path.join(dataset_path, split)
@@ -26,51 +51,58 @@ for split in splits:
         print(
             f"Cảnh báo: Thư mục '{split_path}' không tồn tại hoặc không phải là thư mục."
         )
-        continue  # Bỏ qua nếu thư mục split không tồn tại
+        continue
 
-    # Liệt kê các thư mục con bên trong split_path (đây chính là các nhãn)
-    labels_in_split = [
+    # Liệt kê các thư mục con bên trong split_path (đây là các nhãn thực tế trong folder)
+    actual_labels_in_split = [
         d for d in os.listdir(split_path) if os.path.isdir(os.path.join(split_path, d))
     ]
 
-    if not labels_in_split:
+    if not actual_labels_in_split:
         print(f"Cảnh báo: Không tìm thấy thư mục nhãn nào trong '{split_path}'.")
         continue
 
-    print(f"Tìm thấy các nhãn trong '{split}': {labels_in_split}")
+    print(
+        f"Tìm thấy các thư mục nhãn thực tế trong '{split}': {actual_labels_in_split}"
+    )
 
-    for label in labels_in_split:
-        label_path = os.path.join(split_path, label)
-        # Đếm số lượng file trong thư mục nhãn
-        count = len(
-            [
-                name
-                for name in os.listdir(label_path)
-                if os.path.isfile(os.path.join(label_path, name))
-            ]
-        )
+    for actual_label in actual_labels_in_split:
+        mapped_label = map_label_to_target(actual_label, target_labels)
 
-        label_counts[split][label] = count
-        all_labels.add(label)  # Thêm nhãn vào danh sách tổng
+        if (
+            mapped_label in target_labels
+        ):  # Chỉ xử lý nếu ánh xạ thành công về nhãn mục tiêu
+            label_path = os.path.join(split_path, actual_label)
+            # Đếm số lượng file trong thư mục nhãn thực tế
+            count = len(
+                [
+                    name
+                    for name in os.listdir(label_path)
+                    if os.path.isfile(os.path.join(label_path, name))
+                ]
+            )
 
-# Chuyển set nhãn tổng thể thành list và sắp xếp cho đồng nhất
-all_labels = sorted(list(all_labels))
+            # Cộng số lượng vào nhãn đã được ánh xạ
+            label_counts[split][mapped_label] += count
+        elif mapped_label is None:
+            print(
+                f"Cảnh báo: Bỏ qua thư mục '{actual_label}' trong '{split}' vì không thể ánh xạ tới nhãn mục tiêu."
+            )
 
-# 3. Tính toán số lượng mẫu cho toàn bộ dataset (tổng của train, valid, test)
-overall_counts = {}
-for label in all_labels:
-    overall_counts[label] = sum(
-        label_counts[split].get(label, 0) for split in splits
-    )  # .get(label, 0) để tránh lỗi nếu nhãn không có trong 1 split nào đó
 
-# 4. Chuẩn bị dữ liệu cho việc vẽ biểu đồ
-# Lấy danh sách counts theo thứ tự của all_labels
-overall_values = [overall_counts.get(label, 0) for label in all_labels]
-test_values = [label_counts["test"].get(label, 0) for label in all_labels]
-train_values = [label_counts["train"].get(label, 0) for label in all_labels]
-valid_values = [label_counts["valid"].get(label, 0) for label in all_labels]
+# 4. Tính toán số lượng mẫu cho toàn bộ dataset (tổng của train, valid, test)
+overall_counts = {label: 0 for label in target_labels}
+for label in target_labels:
+    overall_counts[label] = sum(label_counts[split].get(label, 0) for split in splits)
 
-# 5. Vẽ biểu đồ 4 plot con
+# 5. Chuẩn bị dữ liệu cho việc vẽ biểu đồ
+# Lấy danh sách counts theo thứ tự của target_labels
+overall_values = [overall_counts.get(label, 0) for label in target_labels]
+test_values = [label_counts["test"].get(label, 0) for label in target_labels]
+train_values = [label_counts["train"].get(label, 0) for label in target_labels]
+valid_values = [label_counts["valid"].get(label, 0) for label in target_labels]
+
+# 6. Vẽ biểu đồ 4 plot con
 fig, axes = plt.subplots(2, 2, figsize=(12, 10))  # Tạo figure và 4 axes (2x2 grid)
 axes = axes.flatten()  # Làm phẳng mảng axes để dễ dàng truy cập bằng index
 
@@ -78,16 +110,17 @@ axes = axes.flatten()  # Làm phẳng mảng axes để dễ dàng truy cập b�
 titles = ["Tổng cộng toàn bộ dataset", "Tập Test", "Tập Train", "Tập Valid"]
 data_values = [overall_values, test_values, train_values, valid_values]
 
-# Kiểm tra xem có dữ liệu để vẽ không
-if not all_labels:
-    print("Không tìm thấy bất kỳ nhãn nào trong dataset để vẽ biểu đồ.")
+# Kiểm tra xem có dữ liệu để vẽ không (ít nhất là có nhãn mục tiêu)
+if not target_labels:
+    print("Không có nhãn mục tiêu nào được định nghĩa để vẽ biểu đồ.")
 else:
     # Vẽ từng plot
     for i in range(4):
         ax = axes[i]
         counts = data_values[i]
 
-        if not any(counts):  # Kiểm tra nếu tất cả counts đều là 0
+        # Kiểm tra nếu tất cả counts đều là 0 cho plot này
+        if not any(counts):
             ax.set_title(f"{titles[i]} (Không có dữ liệu)")
             ax.text(
                 0.5,
@@ -97,10 +130,11 @@ else:
                 verticalalignment="center",
                 transform=ax.transAxes,
             )
-            ax.set_xticks([])
+            ax.set_xticks([])  # Ẩn các tick nếu không có dữ liệu
             ax.set_yticks([])
         else:
-            bars = ax.bar(all_labels, counts)
+            # Sử dụng target_labels làm nhãn trên trục x
+            bars = ax.bar(target_labels, counts)
             ax.set_title(titles[i])
             ax.set_ylabel("Số lượng mẫu")
             ax.tick_params(
