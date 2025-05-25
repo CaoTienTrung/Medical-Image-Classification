@@ -4,7 +4,7 @@ import numpy as np
 import cv2
 from skimage.feature import hog, local_binary_pattern, graycomatrix, graycoprops
 import matplotlib.pyplot as plt
-from src.FeatureExtractors.feature_extractor import (
+from FeatureExtractors.feature_extractor import (
     HOGFeatureExtractor,
     LBPFeatureExtractor,
     GaborExtractor,
