@@ -27,17 +27,24 @@ def map_label_to_target(label_name, target_labels):
     """Maps a detailed folder name to one of the target high-level labels."""
     label_name_lower = label_name.lower()
 
-    if "normal" in label_name_lower:
+    # Kiểm tra các nhãn cấp cao trước
+    if "normal" in label_name_lower and "normal" in target_labels:
         return "normal"
-    elif "adenocarcinoma" in label_name_lower:
+    elif "adenocarcinoma" in label_name_lower and "adenocarcinoma" in target_labels:
         return "adenocarcinoma"
-    elif "large.cell.carcinoma" in label_name_lower:
+    elif (
+        "large.cell.carcinoma" in label_name_lower
+        and "large.cell.carcinoma" in target_labels
+    ):
         return "large.cell.carcinoma"
-    elif "squamous.cell.carcinoma" in label_name_lower:
+    elif (
+        "squamous.cell.carcinoma" in label_name_lower
+        and "squamous.cell.carcinoma" in target_labels
+    ):
         return "squamous.cell.carcinoma"
     else:
         # Trường hợp không khớp với nhãn nào, có thể in cảnh báo hoặc bỏ qua
-        print(f"Cảnh báo: Tên folder '{label_name}' không khớp với nhãn mục tiêu nào.")
+        # print(f"Cảnh báo: Tên folder '{label_name}' không khớp với nhãn mục tiêu nào.")
         return None  # Trả về None nếu không khớp
 
 
@@ -69,9 +76,8 @@ for split in splits:
     for actual_label in actual_labels_in_split:
         mapped_label = map_label_to_target(actual_label, target_labels)
 
-        if (
-            mapped_label in target_labels
-        ):  # Chỉ xử lý nếu ánh xạ thành công về nhãn mục tiêu
+        # Chỉ xử lý nếu ánh xạ thành công về nhãn mục tiêu VÀ nhãn mục tiêu này có trong danh sách
+        if mapped_label in target_labels:
             label_path = os.path.join(split_path, actual_label)
             # Đếm số lượng file trong thư mục nhãn thực tế
             count = len(
@@ -85,10 +91,9 @@ for split in splits:
             # Cộng số lượng vào nhãn đã được ánh xạ
             label_counts[split][mapped_label] += count
         elif mapped_label is None:
-            print(
-                f"Cảnh báo: Bỏ qua thư mục '{actual_label}' trong '{split}' vì không thể ánh xạ tới nhãn mục tiêu."
-            )
-
+            # Cảnh báo này có thể gây nhiễu nếu có nhiều folder không liên quan
+            # print(f"Cảnh báo: Bỏ qua thư mục '{actual_label}' trong '{split}' vì không thể ánh xạ tới nhãn mục tiêu.")
+            pass  # Bỏ qua các thư mục không phải là nhãn mục tiêu
 
 # 4. Tính toán số lượng mẫu cho toàn bộ dataset (tổng của train, valid, test)
 overall_counts = {label: 0 for label in target_labels}
@@ -137,14 +142,21 @@ else:
             bars = ax.bar(target_labels, counts)
             ax.set_title(titles[i])
             ax.set_ylabel("Số lượng mẫu")
-            ax.tick_params(
-                axis="x", rotation=45, ha="right"
-            )  # Xoay nhãn trục x để dễ đọc
+
+            # SỬA LỖI TẠI ĐÂY: Chỉ dùng rotation trong tick_params
+            ax.tick_params(axis="x", rotation=45)  # <-- Chỉ giữ rotation
+
+            # Thiết lập lại nhãn trục X với căn chỉnh (ha) sau khi đã có nhãn
+            # Sử dụng target_labels vì chúng ta muốn hiển thị 4 nhãn này
+            ax.set_xticklabels(
+                target_labels, rotation=45, ha="right"
+            )  # <-- Thêm dòng này để thiết lập lại nhãn với ha='right'
 
             # Hiển thị số lượng lên trên mỗi cột (tùy chọn)
             for bar in bars:
                 yval = bar.get_height()
                 if yval > 0:
+                    # Căn chỉnh text cho phù hợp với cột xoay
                     ax.text(
                         bar.get_x() + bar.get_width() / 2.0,
                         yval,
