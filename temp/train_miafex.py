@@ -69,7 +69,7 @@ def main():
     # You can add data augmentation / normalization transforms here
     transform = transforms.Compose([
         # transforms.Resize((224, 224)),
-        transforms.ToTensor(),
+        # transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])
     ])
@@ -88,7 +88,8 @@ def main():
         interpolation='bilinear',
         shuffle=True,
         seed=None,
-        num_workers=2
+        num_workers=2,
+        transform=transform
     )
     test_loader = custom_image_dataset_from_directory(
         os.path.join(data_dir, 'test'),
@@ -99,11 +100,11 @@ def main():
         interpolation='bilinear',
         shuffle=True,
         seed=None,
-        num_workers=2
+        num_workers=2,
+        transform=transform
     )
 
-    # Model: uses timm ViT backbone
-    model = MIAFEx(vit_model_name='vit_base_patch16_224', num_classes=num_classes, freeze_backbone=False)
+    model = MIAFEx(vit_model_name='vit_base_patch16_224', num_classes=num_classes, freeze_backbone=True)
     model.to(device)
 
     # Loss and optimizer
@@ -116,12 +117,13 @@ def main():
         test_acc = evaluate(model, test_loader, device)
         print(f'Epoch {epoch}/{epochs} | Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f} | Test Acc: {test_acc:.4f}')
 
+        checkpoint_path = f'miafex2_epoch_{epoch}.pth'
+        torch.save(model.state_dict(), checkpoint_path)
+
     # Final evaluation
     final_acc = evaluate(model, test_loader, device)
     print(f'Final Test Accuracy: {final_acc:.4f}')
 
-    # Save model checkpoint
-    torch.save(model.state_dict(), 'miafex_finetuned.pth')
 
 if __name__ == '__main__':
     main()

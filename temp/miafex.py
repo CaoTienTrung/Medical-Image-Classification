@@ -14,7 +14,6 @@ class MIAFEx(nn.Module):
                  freeze_backbone: bool = False):
         super(MIAFEx, self).__init__()
 
-        # Load pretrained ViT backbone from timm
         self.backbone = timm.create_model(vit_model_name, pretrained=True)
         embed_dim = self.backbone.num_features  # typically 768
 
@@ -23,7 +22,6 @@ class MIAFEx(nn.Module):
             for param in self.backbone.parameters():
                 param.requires_grad = False
 
-        # Refinement weights w_refine ∈ ℝ^D (learned)
         self.w_refine = nn.Parameter(torch.ones(embed_dim), requires_grad=True)
         # Fully connected classification head
         self.classifier = nn.Linear(embed_dim, num_classes)
@@ -33,10 +31,8 @@ class MIAFEx(nn.Module):
         h_out = self.backbone.forward_features(x)  # (B, D)
 
         cls_token = h_out[:, 0, :]                 # (B, D)
-        refined = cls_token * self.w_refine        # (B, D)
 
         # Refinement
-        # refined = h_out * self.w_refine            # (B, D)
         refined = cls_token * self.w_refine        # (B, D)
         # Classification
         logits = self.classifier(refined)          # (B, num_classes)

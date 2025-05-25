@@ -12,7 +12,8 @@ class CustomImageDataset(Dataset):
         label_mode='int', # 'int', 'binary', 'categorical', or None
         color_mode='rgb', # 'rgb' or 'grayscale'
         image_size=(256, 256),
-        interpolation='bilinear' # 'nearest' or 'bilinear'
+        interpolation='bilinear', # 'nearest' or 'bilinear'
+        transform=None
     ):
         # Check valid
         if label_mode not in ('int', 'binary', 'categorical', None):
@@ -28,6 +29,8 @@ class CustomImageDataset(Dataset):
         self.color_mode = color_mode
         self.image_size = image_size
         self.interpolation = cv2.INTER_LINEAR if interpolation == 'bilinear' else cv2.INTER_NEAREST
+
+        self.transform = transform
 
         # Determine class names
         self.class_names = sorted(
@@ -68,6 +71,8 @@ class CustomImageDataset(Dataset):
             img = np.expand_dims(img, -1) #(height, width, channel)
         img = np.transpose(img, (2, 0, 1)) #(channel, height, width)
         tensor = torch.from_numpy(img)
+        if self.transform:
+            tensor = self.transform(tensor)
 
 
         if self.label_mode == 'int':
@@ -88,14 +93,16 @@ def custom_image_dataset_from_directory(
     interpolation='bilinear',
     shuffle=True,
     seed=None,
-    num_workers=0
+    num_workers=0,
+    transform=None
 ):
     dataset = CustomImageDataset(
         directory,
         label_mode=label_mode,
         color_mode=color_mode,
         image_size=image_size,
-        interpolation=('bilinear' if interpolation=='bilinear' else 'nearest')
+        interpolation=('bilinear' if interpolation=='bilinear' else 'nearest'),
+        transform=transform
     )
     if seed is not None:
         random.seed(seed)
