@@ -3,6 +3,7 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
+from skimage.feature import local_binary_pattern
 from FeatureExtractors.feature_extractor import (
     HOGFeatureExtractor,
     LBPFeatureExtractor,
@@ -39,8 +40,7 @@ def load_random_image():
 def visualize_hog(img, hog_extractor):
     """Trực quan hóa HOG features."""
     hog_features = hog_extractor.extract(img)
-    # HOG features là vector 1D, cần reshape lại để trực quan hóa
-    # Tính số cell và tạo lưới hiển thị
+    # HOG features là vector 1D, reshape lại để trực quan hóa
     cell_size = hog_extractor.params["pixels_per_cell"][0]
     num_cells_x = img.shape[1] // cell_size
     num_cells_y = img.shape[0] // cell_size
@@ -53,24 +53,18 @@ def visualize_hog(img, hog_extractor):
 
 def visualize_lbp(img, lbp_extractor):
     """Trực quan hóa LBP features."""
-    lbp = lbp_extractor.extract(img)
-    # LBP trả về histogram, ta sử dụng ảnh LBP trực tiếp
-    lbp_image = local_binary_pattern(
+    lbp = local_binary_pattern(
         img,
         P=lbp_extractor.params["P"],
         R=lbp_extractor.params["R"],
         method=lbp_extractor.params["method"],
     )
-    lbp_image = (
-        (lbp_image - lbp_image.min()) / (lbp_image.max() - lbp_image.min()) * 255
-    )
+    lbp_image = (lbp - lbp.min()) / (lbp.max() - lbp.min()) * 255
     return lbp_image.astype(np.uint8)
 
 
 def visualize_gabor(img, gabor_extractor):
     """Trực quan hóa Gabor features."""
-    feats = gabor_extractor.extract(img)
-    # Tạo một ảnh đại diện bằng cách áp dụng một kernel Gabor
     params = gabor_extractor.params
     kernel = cv2.getGaborKernel(
         ksize=params["ksize"],
@@ -100,54 +94,59 @@ def visualize_sift(img, sift_extractor):
 
 
 def visualize_features():
-    # Đường dẫn đến thư mục chứa ảnh
-    data_dir = "Dataset/Data/train"
+    # Load a random image
+    img, img_name = load_random_image()
 
-    # Khởi tạo các bộ trích xuất đặc trưng
+    # Initialize feature extractors
     hog_extractor = HOGFeatureExtractor()
     lbp_extractor = LBPFeatureExtractor()
     gabor_extractor = GaborExtractor()
-    sift_extractor = SIFTFeatureExtractor(max_keypoints=500)
+    sift_extractor = SIFTFeatureExtractor()
 
-    # Tải ảnh ngẫu nhiên
-    img = load_random_image()
+    # Convert image to grayscale for feature extraction
+    gray_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
-    # Trích xuất và trực quan hóa các đặc trưng
-    hog_image = visualize_hog(img, hog_extractor)
-    lbp_image = visualize_lbp(img, lbp_extractor)
-    gabor_image = visualize_gabor(img, gabor_extractor)
-    sift_image = visualize_sift(img, sift_extractor)
+    # Extract and visualize features
+    hog_image = visualize_hog(gray_img, hog_extractor)
+    lbp_image = visualize_lbp(gray_img, lbp_extractor)
+    gabor_image = visualize_gabor(gray_img, gabor_extractor)
+    sift_image = visualize_sift(gray_img, sift_extractor)
 
-    # Tạo figure để hiển thị
+    # Create visualization
     plt.figure(figsize=(15, 10))
 
+    # Original image
     plt.subplot(2, 3, 1)
-    plt.imshow(img, cmap="gray")
-    plt.title("Ảnh gốc")
+    plt.imshow(img)
+    plt.title("Original Image")
     plt.axis("off")
 
+    # HOG visualization
     plt.subplot(2, 3, 2)
     plt.imshow(hog_image, cmap="gray")
     plt.title("HOG Features")
     plt.axis("off")
 
+    # LBP visualization
     plt.subplot(2, 3, 3)
     plt.imshow(lbp_image, cmap="gray")
     plt.title("LBP Features")
     plt.axis("off")
 
+    # Gabor visualization
     plt.subplot(2, 3, 4)
     plt.imshow(gabor_image, cmap="gray")
     plt.title("Gabor Features")
     plt.axis("off")
 
+    # SIFT visualization
     plt.subplot(2, 3, 5)
     plt.imshow(sift_image, cmap="gray")
     plt.title("SIFT Keypoints")
     plt.axis("off")
 
     plt.tight_layout()
-    output_path = "feature_visualization.png"
+    output_path = f"feature_visualization_{img_name}.png"
     plt.savefig(output_path)
     plt.close()
     print(f"Đã lưu hình ảnh trực quan tại: {output_path}")
