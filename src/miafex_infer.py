@@ -1,6 +1,6 @@
 import argparse
 import yaml
-from models import MIAFEx, SVMClassifier, LRClassifier, RFClassifier, XGBoostClassifier
+from models import MIAFEx, SVMClassifier, LRClassifier, RFClassifier, XGBoostClassifier, MIAFExTF
 from utils import chestCTforMIAFEx, chestCTforViT
 from torch.utils.data import DataLoader
 import torch
@@ -43,17 +43,21 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    viT = MIAFEx(
-        image_size = 224,
-        patch_size = 16,
-        num_classes = 4,
-        dim = 1024,
-        depth = 6,
-        heads = 16,
-        mlp_dim = 2048,
-        dropout = 0.3,
-        emb_dropout = 0.1
-    ).to(device)
+    # viT = MIAFEx(
+    #     image_size = 224,
+    #     patch_size = 16,
+    #     num_classes = 4,
+    #     dim = 1024,
+    #     depth = 6,
+    #     heads = 16,
+    #     mlp_dim = 2048,
+    #     dropout = 0.3,
+    #     emb_dropout = 0.1
+    # ).to(device)
+
+    model = MIAFExTF(vit_model_name='vit_base_patch16_224', num_classes=config["model"]["num_classes"], freeze_backbone=True).to(device)
+    optimizer = optim.NAdam(filter(lambda p: p.requires_grad, model.parameters()), lr=config["adam"]["lr"])
+    viT, optimizer = load_model_state(model, optimizer, config["model"]["save_path"])
 
     criterion = nn.CrossEntropyLoss()
     num_epochs = config["model"]["epochs"]
@@ -79,7 +83,7 @@ if __name__ == "__main__":
     rf = RFClassifier(n_estimators=config["rf"]["n_estimators"], criterion=config["rf"]["criterion"],random_state=config["rf"]["random_state"], model_path=config["rf"]["model_path"])
     xgb = XGBoostClassifier(n_estimators=config["xgb"]["n_estimators"], max_depth=config["xgb"]["max_depth"], learning_rate=config["xgb"]["lr"], model_path=config["xgb"]["model_path"], num_class=config["xgb"]["num_classes"])
 
-    list_of_models = [svm, lr, rf, xgb]
+    list_of_models =  [svm, lr, rf, xgb]
     results = []
     for model in list_of_models:
         model.model.fit(features_train_dev, labels_train_dev)

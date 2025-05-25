@@ -37,6 +37,5 @@ def load_model_state(model, optimizer, model_path):
         print(f"Model state loaded successfully from {model_path}")
     except Exception as e:
         print(f"Error loading model state: {e}")
-        raise e
     
     return model, optimizer

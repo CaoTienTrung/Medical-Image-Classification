@@ -55,173 +55,90 @@ class FocalLoss(nn.Module):
 import os
 from torchvision import transforms
 
-if __name__ == "__main__":
+def train(model, loader, criterion, optimizer, device):
+    model.train()
+    running_loss = 0.0
+    correct = 0
+    total = 0
+
+    for images, labels in tqdm(loader):
+        images = images.to(device)
+        labels = labels.to(device)
+
+        optimizer.zero_grad()
+        logits, probs, _ = model(images)
+        # print(logits.shape)
+        # print(labels.shape)
+        loss = criterion(logits, labels)
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item() * images.size(0)
+        _, preds = torch.max(probs, dim=1)
+        correct += (preds == labels).sum().item()
+        total += images.size(0)
+
+    epoch_loss = running_loss / total
+    epoch_acc = correct / total
+    print(f'Loss: {epoch_loss} - Accc: {epoch_acc}')
+    return epoch_loss, epoch_acc
+
+
+def evaluate(model, loader, device):
+    model.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for images, labels in tqdm(loader):
+            images = images.to(device)
+            labels = labels.to(device)
+            logits, probs, _ = model(images)
+            _, preds = torch.max(probs, dim=1)
+            correct += (preds == labels).sum().item()
+            total += images.size(0)
+
+    return correct / total
+
+
+def main():
     args = parse_args()
     config = load_yaml(args.config)
     
-    data_dir = '/home/anhkhoa/Medical-Image-Classification/Dataset/Data'
-    num_classes = len(os.listdir(os.path.join(data_dir, 'train')))
-    batch_size = 8
-    epochs = 10
-    lr = 1e-4
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    # Data loaders
-    train_dir = os.path.join(data_dir, 'train')
-    test_dir  = os.path.join(data_dir, 'test')
-
-    # You can add data augmentation / normalization transforms here
-    transform = transforms.Compose([
-        # transforms.Resize((224, 224)),
-        # transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225])
-    ])
-
-    # train_dataset = CustomImageDataset(train_dir, labels='inferred', label_mode='int', transform=transform)
-    # test_dataset  = CustomImageDataset(test_dir,  labels='inferred', label_mode='int', class_names=train_dataset.class_names, transform=transform)
-
-    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,  num_workers=4)
-    # test_loader  = DataLoader(test_dataset,  batch_size=batch_size, shuffle=False, num_workers=4)
-    train_loader = custom_image_dataset_from_directory(
-        os.path.join(data_dir, 'train'),
-        label_mode='int',
-        color_mode='rgb',
-        batch_size=batch_size,
-        image_size=(224,224),
-        interpolation='bilinear',
-        shuffle=True,
-        seed=None,
-        num_workers=2,
-        transform=transform
-    )
-    test_loader = custom_image_dataset_from_directory(
-        os.path.join(data_dir, 'test'),
-        label_mode='int',
-        color_mode='rgb',
-        batch_size=batch_size,
-        image_size=(224,224),
-        interpolation='bilinear',
-        shuffle=True,
-        seed=None,
-        num_workers=2,
-        transform=transform
-    )
+    train_set = chestCTforViT(config["data"]["path"], "train", config["data"]["img_size"])
+    dev_set = chestCTforViT(config["data"]["path"], "valid", config["data"]["img_size"])
+    test_set = chestCTforViT(config["data"]["path"], "test", config["data"]["img_size"])
+    
+    train_loader = DataLoader(train_set, batch_size=config["data"]["batch_size"], shuffle=True)
+    dev_loader = DataLoader(dev_set, batch_size=config["data"]["batch_size"], shuffle=False)
+    test_loader = DataLoader(test_set, batch_size=config["data"]["batch_size"], shuffle=False)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # all_train_labels = [int(label) for _, label in train_set]
-
-    # # Bây giờ tính class weights an toàn
-    # classes = np.unique(all_train_labels)
-    # class_weights = compute_class_weight(class_weight='balanced', classes=classes, y=all_train_labels)
-    # class_weights_tensor = torch.tensor(class_weights, dtype=torch.float).to(device)
-    # viT = MIAFEx(
-    #     image_size = 224,
-    #     patch_size = 16,
-    #     num_classes = 4,
-    #     dim = 1024,
-    #     depth = 6,
-    #     heads = 16,
-    #     mlp_dim = 2048,
-    #     dropout = 0.1,
-    #     emb_dropout = 0.1,
-    #     pool='mean'
-    # ).to(device)
-
-    viT = MIAFExTF(
+    model = MIAFEx(
     ).to(device)
 
+    # model = MIAFExTF(vit_model_name='vit_base_patch16_224', num_classes=config["model"]["num_classes"], freeze_backbone=True)
+    model.to(device)
+
+    # Loss and optimizer
     criterion = nn.CrossEntropyLoss()
-    num_epochs = config["model"]["epochs"]
+    optimizer = optim.NAdam(filter(lambda p: p.requires_grad, model.parameters()), lr=config["adam"]["lr"])
 
-    optimizer = optim.Adam(viT.parameters(), lr=config["adam"]["lr"])
+    epochs = config["model"]["epochs"]
+    # Training loop
+    for epoch in range(1, epochs+1):
+        train_loss, train_acc = train(model, train_loader, criterion, optimizer, device)
+        test_acc = evaluate(model, test_loader, device)
+        print(f'Epoch {epoch}/{epochs} | Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f} | Test Acc: {test_acc:.4f}')
 
+        checkpoint_path = f'miafex2_epoch_{epoch}.pth'
+        torch.save(model.state_dict(), checkpoint_path)
 
+    # Final evaluation
+    final_acc = evaluate(model, test_loader, device)
+    print(f'Final Test Accuracy: {final_acc:.4f}')
 
-    
-    for epoch in range(num_epochs):
-        viT.train()
-        running_loss = 0.0
-        correct_train = 0
-        total_train = 0
+    save_model(model, optimizer, config["model"]["save_path"])
 
-        progress_bar = tqdm(train_loader, 
-                        desc=f'Epoch {epoch+1}/{num_epochs}', 
-                        unit='batch')
-        
-        for batch_id, (inputs, labels) in enumerate(progress_bar):
-            inputs, labels = inputs.to(device), labels.to(device)
-
-            optimizer.zero_grad()
-            outputs = viT(inputs)
-
-            loss = criterion(outputs, labels.long())
-            loss.backward()
-            optimizer.step()
-
-            # Đếm số đúng
-            _, preds = torch.max(outputs.data, 1)
-            correct_train += (preds == labels).sum().item()
-            total_train += labels.size(0)
-
-            running_loss += loss.item()
-            progress_bar.set_postfix({
-                'loss': f'{running_loss/(batch_id+1):.4f}',
-                'acc': f'{100 * correct_train / total_train:.2f}%'
-            })
-
-        epoch_loss = running_loss / len(train_loader)
-        epoch_acc = 100 * correct_train / total_train
-        print(f'Epoch {epoch+1} - Avg Loss: {epoch_loss:.4f} | Train Acc: {epoch_acc:.2f}%')
-
-        viT.eval()
-        correct_pred = 0
-        total_pred = 0
-        with torch.no_grad():
-            test_bar = tqdm(test_loader, desc='Testing', unit='batch')
-            for inputs, labels in test_bar:
-                inputs, labels = inputs.to(device), labels.to(device)
-                outputs = viT(inputs)
-                _, pred = torch.max(outputs.data, 1)
-                total_pred += labels.size(0)
-                correct_pred += (pred == labels).sum().item()
-                test_bar.set_postfix({'acc': f'{100*correct_pred/total_pred:.2f}%'})
-
-
-        
-
-
-    viT.eval()  # Set model to evaluation mode
-    correct_pred = 0
-    total_pred = 0
-
-    y_true = []
-    y_pred = []
-    with torch.no_grad():
-        test_bar = tqdm(test_loader, desc='Testing', unit='batch')
-        for inputs, labels in test_bar:
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = viT(inputs)
-            _, pred = torch.max(outputs.data, 1)
-            total_pred += labels.size(0)
-            correct_pred += (pred == labels).sum().item()
-            test_bar.set_postfix({'acc': f'{100*correct_pred/total_pred:.2f}%'})
-
-            y_true.extend(labels.cpu().numpy())
-            y_pred.extend(pred.cpu().numpy())
-
-
-
-    
-    print(f'\n Test Accuracy: {100 * correct_pred / total_pred:.2f}%')
-
-    cm = confusion_matrix(y_true, y_pred)
-    print("Confusion Matrix:")
-    print(cm)
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-    disp.plot(cmap='Blues')
-    plt.show()
-
-    # save the model
-    save_model(viT, optimizer, config["model"]["save_path"])
+if __name__ == '__main__':
+    main()
