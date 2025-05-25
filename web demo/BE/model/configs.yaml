@@ -1,0 +1,48 @@
+data:
+  img_size: [224, 224]
+  batch_size: 4 # 8
+  path: "D:/Project/Medical-Image-Classification/Dataset/Data"
+
+adam:
+  lr: 0.0001 # 1e-4
+
+run:
+  type: "infer"
+
+model:
+  d_model: 768
+  encoder_layers: 6
+  patch_size: 16
+  num_classes: 4
+  epochs: 20
+  save_path: "model/miafex_best"
+
+svm:
+  model_path: "model/svm_best"
+  C: 10.0
+  kernel: "rbf"
+  degree: 2
+
+lr:
+  model_path: "model/lr_best"
+  solver: "lbfgs"
+  C: 1.0
+  max_iter: 1000
+  random_state: 42
+
+rf:
+  model_path: "model/rf_best"
+  n_estimators: 100
+  criterion: "gini"
+  random_state: 42
+
+xgb:
+  model_path: "model/xgb_best"
+  n_estimators: 100
+  max_depth: 6
+  lr: 0.1
+  random_state: 42
+  num_classes: 4
+
+results:
+  save_path: "model/miafex_infer.json"

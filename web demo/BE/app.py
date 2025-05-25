@@ -3,49 +3,61 @@ from flask_cors import CORS
 from PIL import Image
 import io
 import base64
+import os
+from model.predict import predict
+import warnings
 
+name_map = {
+    "normal": "Bình thường",
+    "adenocarcinoma": "Ung thư biểu mô tuyến",
+    "large.cell.carcinoma": "Ung thư biểu mô TB lớn",
+    "squamous.cell.carcinoma": "Ung thư biểu mô TB vảy",
+}
+
+warnings.filterwarnings("ignore")
 app = Flask(__name__)
 CORS(app)
 
-
-class SimulatedMLModel:
-    def __init__(self):
-        self.classes = ["Normal", "Pneumonia", "COVID-19"]
-        self.threshold = 0.5
-
-    def predict(self, image):
-        # Giả lập dự đoán với danh sách các class và confidence
-        return {
-            "predictions": [
-                {"label": "Normal", "confidence": 0.7},
-                {"label": "Pneumonia", "confidence": 0.2},
-                {"label": "COVID-19", "confidence": 0.1},
-            ]
-        }
-
-
-ml_model = SimulatedMLModel()
+# Create uploads directory if it doesn't exist
+UPLOAD_FOLDER = "uploads"
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
 
 @app.route("/predict", methods=["POST"])
-def predict():
+def predict_image():
     try:
+        # Get image data from request
         data = request.json
         if not data or "image" not in data:
             return jsonify({"error": "No image data provided"}), 400
 
-        # Decode base64 string trực tiếp (FE đã bỏ prefix)
-        image_data = base64.b64decode(data["image"])
-        image = Image.open(io.BytesIO(image_data))
+        # Decode base64 image
+        image_data = data["image"]
+        if "," in image_data:
+            image_data = image_data.split(",")[1]
+        image_bytes = base64.b64decode(image_data)
 
-        # Gọi model để dự đoán
-        result = ml_model.predict(image)
+        # Save image temporarily
+        image = Image.open(io.BytesIO(image_bytes))
+        # Convert RGBA to RGB if necessary
+        if image.mode == "RGBA":
+            image = image.convert("RGB")
+        temp_path = os.path.join(UPLOAD_FOLDER, "temp_image.jpg")
+        image.save(temp_path)
 
-        return jsonify(result)
+        # Make prediction
+        result = predict(temp_path, "model/configs.yaml")
+        result = name_map[result]
+
+        # Clean up temporary file
+        os.remove(temp_path)
+
+        return jsonify({"predictions": result, "status": "success"})
 
     except Exception as e:
-        print(f"Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        print(e)
+        return jsonify({"error": str(e), "status": "error"}), 500
 
 
 if __name__ == "__main__":

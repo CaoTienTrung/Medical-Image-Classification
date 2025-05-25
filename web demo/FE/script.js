@@ -90,28 +90,20 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const data = await response.json();
-      const predictions = data.predictions;
+      const prediction = data.predictions;
+
+      // Xác định style dựa trên kết quả
+      const isNormal = prediction.toLowerCase().includes("bình thường");
+      const textColor = isNormal ? "#2ecc71" : "#e74c3c";
 
       // Hiển thị kết quả
-      const resultHTML = predictions
-        .map(
-          (pred) => `
-            <div class="prediction-item">
-              <span class="label">${pred.label}</span>
-              <div class="confidence-bar">
-                <div class="confidence-fill" style="width: ${
-                  pred.confidence * 100
-                }%"></div>
-              </div>
-              <span class="confidence-value">${(pred.confidence * 100).toFixed(
-                1
-              )}%</span>
-            </div>
-          `
-        )
-        .join("");
-
-      predictionResult.innerHTML = resultHTML;
+      predictionResult.innerHTML = `
+        <div class="prediction-item">
+          <span class="label" style="font-weight: bold; color: ${textColor}; font-size: 1.2em;">
+            ${prediction}
+          </span>
+        </div>
+      `;
     } catch (error) {
       console.error("Error:", error);
       predictionResult.innerHTML =
