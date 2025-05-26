@@ -5,13 +5,14 @@ dataset:
 
 feature_extractor:
   name: "GaborFeatureExtractor"
+  params:
+    kernel_size: [7, 14, 21]
+    sigma: [1, 2, 3]
 
 model:
-  name: "KNNClassifier"
+  name: "LRClassifier"
   params:
-    n_neighbors: [3, 5, 7, 9]
-    weights: ["uniform", "distance"]
-    metric: ["euclidean", "manhattan"]
+    max_iter: [100, 300, 500, 1000]
 
 output:
   dir: "results/gridsearch"

@@ -5,13 +5,15 @@ dataset:
 
 feature_extractor:
   name: "LBPFeatureExtractor"
+  params:
+    radius: [1, 2, 3]
+    n_points: [8, 12]
+    method: ["uniform", "default"]
 
 model:
-  name: "KNNClassifier"
+  name: "LRClassifier"
   params:
-    n_neighbors: [3, 5, 7, 9]
-    weights: ["uniform", "distance"]
-    metric: ["euclidean", "manhattan"]
+    max_iter: [100, 300, 500, 1000]
 
 output:
   dir: "results/gridsearch"

@@ -5,6 +5,9 @@ dataset:
 
 feature_extractor:
   name: "GaborFeatureExtractor"
+  params:
+    kernel_size: [7, 14, 21]
+    sigma: [1, 2, 3]
 
 model:
   name: "SVMClassifier"

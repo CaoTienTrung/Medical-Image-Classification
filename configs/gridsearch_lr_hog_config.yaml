@@ -11,11 +11,9 @@ feature_extractor:
     cells_per_block: [1, 2, 3]
 
 model:
-  name: "SVMClassifier"
+  name: "LRClassifier"
   params:
-    C: [0.1, 1, 10, 100]
-    kernel: ["linear", "rbf"]
-    gamma: ["scale", "auto", 0.1, 0.01]
+    max_iter: [100, 300, 500, 1000]
 
 output:
   dir: "results/gridsearch"

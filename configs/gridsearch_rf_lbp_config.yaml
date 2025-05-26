@@ -6,6 +6,10 @@ model:
 
 feature_extractor:
   name: "LBPFeatureExtractor"
+  params:
+    radius: [1, 2, 3]
+    n_points: [8, 12]
+    method: ["uniform", "default"]
 
 dataset:
   data_dir: "Dataset/Data"
