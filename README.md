@@ -1,4 +1,4 @@
-## **Phân loại bệnh ung thư phổi qua ảnh CT**   
+# **Phân loại bệnh ung thư phổi qua ảnh CT**   
 ![Pipeline minh họa](https://daotaolientuc.edu.vn/wp-content/uploads/2021/07/nganh-ky-thuat-hinh-anh-y-hoc-3.jpg)
 ## 🌟 Tầm quan trọng của bài toán  
 Trong thời đại công nghiệp phát triển dẫn đến không khí ngày càng ô nhiễm, sức khỏe của hệ hô hấp của mỗi người ngày càng bị đe dọa. Các bệnh về phổi, đặc biệt là ung thư phổi đang trở thành 1 chủ đề đáng quan ngại kể cả với những người sống lành mạnh nhất.
