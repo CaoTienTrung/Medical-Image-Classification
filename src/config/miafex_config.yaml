@@ -13,6 +13,7 @@ model:
   num_classes: 4
   epochs: 20
   save_path: "/home/anhkhoa/Medical-Image-Classification/src/save_path/miafex_best"
+  save_json: "/home/anhkhoa/Medical-Image-Classification/src/save_path/miafex_training.json"
   
 
 

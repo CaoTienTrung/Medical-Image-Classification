@@ -582,6 +582,21 @@ class ViTTransferLearning(nn.Module):
     def forward(self, x):
         return self.model(x)
 
+from timm.models.vision_transformer import Attention
+
+def forward_with_attn(self, x):
+    B, N, C = x.shape
+    qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads)
+    q, k, v = qkv.permute(2, 0, 3, 1, 4)
+    attn = (q @ k.transpose(-2, -1)) * self.scale
+    attn = attn.softmax(dim=-1)
+    self.attn_weights = attn.detach()  # save to self
+    attn = self.attn_drop(attn)
+    x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+    x = self.proj(x)
+    x = self.proj_drop(x)
+    return x
+
 class MIAFExTF(nn.Module):
     def __init__(self,
                  vit_model_name='vit_base_patch16_224_in21k',
@@ -599,22 +614,31 @@ class MIAFExTF(nn.Module):
 
         self.w_refine = nn.Parameter(torch.ones(embed_dim), requires_grad=True)
         # Fully connected classification head
-        self.classifier = nn.Linear(embed_dim, num_classes)
+        self.classifier = nn.Sequential(
+            nn.Linear(embed_dim, num_classes)
+            )
+        
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        for blk in self.backbone.blocks:
+            blk.attn.forward = forward_with_attn.__get__(blk.attn, Attention)
+    
+    
+            
     def forward(self, x):
-        # Extract CLS token feature from ViT backbone
+        
+
+        # Forward through ViT
         h_out = self.backbone.forward_features(x)  # (B, D)
+        cls_token = h_out[:, 0, :]  # (B, D)
 
-        cls_token = h_out[:, 0, :]                 # (B, D)
+        # Refinement and classification
+        refined = cls_token * self.w_refine
+        logits = self.classifier(refined)
+        probs = F.softmax(logits, dim=-1)
 
-        # Refinement
-        refined = cls_token * self.w_refine        # (B, D)
-        # Classification
-        logits = self.classifier(refined)          # (B, num_classes)
-        # print(logits.shape)
-        probs = F.softmax(logits, dim=-1)          # (B, num_classes)
-        return logits, probs, refined
+        attn_maps = [blk.attn.attn_weights.cpu() for blk in self.backbone.blocks]
 
+        return logits, probs, refined, attn_maps
     def extract_features(self, x):
         
         h_out = self.backbone.forward_features(x)  # (B, D)
@@ -730,7 +754,7 @@ class ViT(nn.Module):
 
         assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
 
-        num_patches = (image_height // patch_height) * (image_width // patch_width)
+        num_patches = (image_height * image_width // patch_height * patch_width)
         patch_dim = channels * patch_height * patch_width
         assert pool in {'cls', 'mean'}, 'pool type must be either cls (cls token) or mean (mean pooling)'
 
@@ -752,7 +776,7 @@ class ViT(nn.Module):
 
         self.mlp_head = nn.Linear(dim, num_classes)
 
-    def forward(self, img):
+    def forward(self, img): 
         x = self.to_patch_embedding(img)
         b, n, _ = x.shape
 
@@ -763,10 +787,12 @@ class ViT(nn.Module):
 
         x = self.transformer(x)
 
-        x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0]
+        x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0, :]
 
         x = self.to_latent(x)
-        return self.mlp_head(x)
+
+        probs = F.softmax(self.mlp_head(x), dim=-1)
+        return self.mlp_head(x), probs
 
 
 class MIAFEx(nn.Module):

@@ -80,14 +80,14 @@ if __name__ == "__main__":
             inputs, labels = inputs.to(device), labels.to(device)
 
             optimizer.zero_grad()
-            outputs = viT(inputs)
+            outputs, probs = viT(inputs)
 
             loss = criterion(outputs, labels.long())
             loss.backward()
             optimizer.step()
 
             # Đếm số đúng
-            _, preds = torch.max(outputs.data, 1)
+            _, preds = torch.max(probs, 1)
             correct_train += (preds == labels).sum().item()
             total_train += labels.size(0)
 
@@ -114,8 +114,8 @@ if __name__ == "__main__":
             test_bar = tqdm(test_loader, desc='Testing', unit='batch')
             for inputs, labels in test_bar:
                 inputs, labels = inputs.to(device), labels.to(device)
-                outputs = viT(inputs)
-                _, pred = torch.max(outputs.data, 1)
+                outputs, probs = viT(inputs)
+                _, pred = torch.max(probs, 1)
 
                 total_pred += labels.size(0)
                 correct_pred += (pred == labels).sum().item()
