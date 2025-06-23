@@ -8,70 +8,55 @@ from skimage.filters import gabor_kernel
 from scipy.ndimage import convolve
 import cv2
 
-
 class HOGFeatureExtractor:
     def __init__(self):
         self.params = {
-            "orientations": 9,
-            "pixels_per_cell": (8, 8),
-            "cells_per_block": (2, 2),
-            "block_norm": "L2-Hys",
-            "feature_vector": True,
+            'orientations': 9,
+            'pixels_per_cell': (8, 8),
+            'cells_per_block': (2, 2),
+            'block_norm': 'L2-Hys',
+            'feature_vector': True
         }
 
     def extract(self, img):
-        # Convert to grayscale if image is color
-        if len(img.shape) == 3:
-            if img.shape[2] == 3:  # RGB image
-                img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-            elif img.shape[2] == 1:  # Single channel image
-                img = img.squeeze()
-
-        # Ensure image is 2D
-        if len(img.shape) != 2:
-            raise ValueError(f"Expected 2D image, got shape {img.shape}")
-
-        return hog(
-            img,
-            orientations=self.params["orientations"],
-            pixels_per_cell=self.params["pixels_per_cell"],
-            cells_per_block=self.params["cells_per_block"],
-            block_norm=self.params["block_norm"],
-            feature_vector=self.params["feature_vector"],
-        )
+        return hog(img, 
+                   orientations=self.params["orientations"],
+                   pixels_per_cell=self.params["pixels_per_cell"],
+                   cells_per_block=self.params["cells_per_block"],
+                   block_norm=self.params["block_norm"],
+                   feature_vector=self.params["feature_vector"])
 
 
 class LBPFeatureExtractor:
     def __init__(self):
-        self.params = {"P": 8, "R": 1, "method": "uniform"}
+        self.params = {
+            'P': 8,
+            'R': 1,
+            'method': 'uniform'
+        }
 
     def extract(self, img):
-        # Convert tensor to numpy and squeeze to remove single-dimensional entries
-        if isinstance(img, torch.Tensor):
-            img = img.numpy()
-        img = np.squeeze(img)
-
-        lbp = local_binary_pattern(
-            img, P=self.params["P"], R=self.params["R"], method=self.params["method"]
-        )
+        lbp = local_binary_pattern(img, 
+                                   P=self.params["P"],
+                                   R=self.params["R"],
+                                   method=self.params["method"]
+                                   )
         nbins = self.params["P"] + 2
-        hist, _ = np.histogram(
-            lbp.ravel(), bins=np.arange(0, nbins + 1), range=(0, nbins), density=True
-        )
+        hist, _ = np.histogram(lbp.ravel(), bins=np.arange(0, nbins+1), range=(0, nbins), density=True)
         return hist
 
 
 class GLCMFeatureExtractor:
     def __init__(self):
         self.distances = [1]
-        self.angles = [0, np.pi / 4, np.pi / 2, 3 * np.pi / 4]
+        self.angles = [0, np.pi/4, np.pi/2, 3*np.pi/4]
         self.properties = [
-            "contrast",
-            "dissimilarity",
-            "homogeneity",
-            "energy",
-            "correlation",
-            "ASM",
+            'contrast',
+            'dissimilarity',
+            'homogeneity',
+            'energy',
+            'correlation',
+            'ASM'
         ]
 
     def extract(self, img):
@@ -80,7 +65,7 @@ class GLCMFeatureExtractor:
             distances=self.distances,
             angles=self.angles,
             symmetric=True,
-            normed=True,
+            normed=True
         )
 
         return np.concatenate([graycoprops(glcm, p).flatten() for p in self.properties])
@@ -89,12 +74,12 @@ class GLCMFeatureExtractor:
 class GaborExtractor:
     def __init__(self):
         self.params = {
-            "ksize": (21, 21),
-            "sigmas": [1, 3],
-            "thetas": np.linspace(0, np.pi, 4, endpoint=False),
-            "lambdas": [np.pi / 4, np.pi / 2],
-            "gamma": 0.5,
-            "psi": 0,
+            'ksize': (21, 21),
+            'sigmas': [1, 3],
+            'thetas': np.linspace(0, np.pi, 4, endpoint=False),
+            'lambdas': [np.pi/4, np.pi/2],
+            'gamma': 0.5,
+            'psi': 0
         }
 
     def extract(self, image):
@@ -105,14 +90,13 @@ class GaborExtractor:
             for theta in p["thetas"]:
                 for lam in p["lambdas"]:
                     kernel = cv2.getGaborKernel(
-                        ksize=p["ksize"],
-                        sigma=sigma,
-                        theta=theta,
-                        lambd=lam,
-                        gamma=p["gamma"],
-                        psi=p["psi"],
-                        ktype=cv2.CV_32F,
-                    )
+                        ksize=p['ksize'], 
+                        sigma=sigma, 
+                        theta=theta, 
+                        lambd=lam, 
+                        gamma=p['gamma'],
+                        psi=p['psi'], 
+                        ktype=cv2.CV_32F)
                     filtered = cv2.filter2D(image, cv2.CV_32F, kernel)
                     feats.append(filtered.mean())
                     feats.append(filtered.var())
@@ -122,8 +106,8 @@ class GaborExtractor:
 class SIFTFeatureExtractor:
     def __init__(self, max_keypoints=500):
         """
-        max_keypoints : int
-           Số keypoint lớn nhất sẽ giữ lại; nếu ít hơn sẽ được padding zeros.
+         max_keypoints : int
+            Số keypoint lớn nhất sẽ giữ lại; nếu ít hơn sẽ được padding zeros.
         """
         self.sift = cv2.SIFT_create()
         self.max_keypoints = max_keypoints
@@ -147,5 +131,5 @@ class SIFTFeatureExtractor:
             padding = np.zeros((self.max_keypoints - n, 128), dtype=descriptors.dtype)
             descriptors = np.vstack([descriptors, padding])
         else:
-            descriptors = descriptors[: self.max_keypoints]
+            descriptors = descriptors[:self.max_keypoints]
         return descriptors.flatten()
